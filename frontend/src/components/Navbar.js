@@ -28,6 +28,18 @@ function Navbar({ isAuthenticated, onLogout }) {
                 >
                   Dashboard
                 </NavLink>
+                <NavLink
+                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  to="/health-profile"
+                >
+                  Health Profile
+                </NavLink>
+                <NavLink
+                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  to="/symptom-checker"
+                >
+                  Symptom Checker
+                </NavLink>
                 <button className={styles.logoutButton} onClick={onLogout} type="button">
                   Logout
                 </button>

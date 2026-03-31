@@ -4,9 +4,11 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import Footer from './components/Footer';
 import Navbar from './components/Navbar';
 import Dashboard from './pages/Dashboard';
+import HealthProfile from './pages/HealthProfile';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import SymptomChecker from './pages/SymptomChecker';
 import { clearStoredSession, getStoredSession } from './services/api';
 
 function ProtectedRoute({ isAuthenticated, children }) {
@@ -61,6 +63,23 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/health-profile"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <HealthProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/symptom-checker"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <SymptomChecker />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/symptoms" element={<Navigate replace to="/symptom-checker" />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </main>

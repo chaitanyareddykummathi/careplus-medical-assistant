@@ -45,6 +45,24 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+http.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    const status = error?.response?.status;
+    const requestUrl = String(error?.config?.url || '');
+    const isAuthRequest = requestUrl.includes('/auth/');
+
+    if (status === 401 && !isAuthRequest) {
+      clearStoredSession();
+      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+        window.location.assign('/login');
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
 function persistSession({ accessToken, user }) {
   if (!isValidToken(accessToken)) {
     return;
@@ -154,6 +172,16 @@ export async function getHealthProfile() {
 
 export async function saveHealthProfile(payload) {
   const { data } = await http.post(withApiPrefix('/user/health-profile'), payload);
+  return data;
+}
+
+export async function updateHealthProfile(payload) {
+  const { data } = await http.put(withApiPrefix('/user/health-profile'), payload);
+  return data;
+}
+
+export async function analyzeSymptoms(payload) {
+  const { data } = await http.post(withApiPrefix('/nlp/analyze-symptoms'), payload);
   return data;
 }
 

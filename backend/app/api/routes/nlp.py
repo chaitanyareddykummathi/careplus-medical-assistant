@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 from app.api.deps.auth import require_roles
 from app.api.deps.rate_limit import get_rate_limited_analysis_user
 from app.db.deps import get_db
+from app.dependencies import get_symptom_analysis_service
 from app.models.user import User
 from app.schemas.jobs import (
     AnalysisJobEnqueueResponse,
@@ -11,7 +12,9 @@ from app.schemas.jobs import (
     AnalysisJobStatusResponse,
 )
 from app.schemas.nlp import NLPAnalyzeRequest
+from app.schemas.symptom_analysis import SymptomAnalysisRequest, SymptomAnalysisResponse
 from app.services.job_service import analysis_job_service
+from app.services.symptom_analysis_service import SymptomAnalysisService
 
 router = APIRouter(prefix='/nlp', tags=['NLP'])
 
@@ -41,3 +44,13 @@ def get_analysis_result(
     current_user: User = Depends(require_roles('patient', 'clinician', 'admin')),
 ) -> AnalysisJobResultResponse:
     return analysis_job_service.get_job_result(db=db, current_user=current_user, job_id=job_id)
+
+
+@router.post('/analyze-symptoms', response_model=SymptomAnalysisResponse)
+def analyze_symptoms(
+    payload: SymptomAnalysisRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_rate_limited_analysis_user),
+    service: SymptomAnalysisService = Depends(get_symptom_analysis_service),
+) -> SymptomAnalysisResponse:
+    return service.analyze_symptoms(db=db, current_user=current_user, payload=payload)

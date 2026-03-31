@@ -23,3 +23,16 @@ class User(TimestampMixin, Base):
         cascade='all, delete-orphan',
         lazy='selectin',
     )
+    health_profile = relationship(
+        'UserHealthProfile',
+        back_populates='user',
+        uselist=False,
+        cascade='all, delete-orphan',
+        lazy='selectin',
+    )
+    symptom_logs = relationship(
+        'SymptomLog',
+        back_populates='user',
+        cascade='all, delete-orphan',
+        lazy='selectin',
+    )
