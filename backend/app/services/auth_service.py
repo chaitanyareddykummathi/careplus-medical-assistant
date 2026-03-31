@@ -86,6 +86,7 @@ class AuthService:
             db.refresh(new_user)
         except IntegrityError as exc:
             db.rollback()
+            print("real db error",str(exc))
             logger.warning(
                 'Register failed: integrity violation.',
                 extra={'auth_email': normalized_email},

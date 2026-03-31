@@ -59,7 +59,9 @@ function Register() {
       name: form.name.trim(),
       email: form.email.trim().toLowerCase(),
       password: form.password,
-    };
+      confirmPassword: form.confirmPassword,
+      username: form.email.split('@')[0], // Optional username derived from email
+};
     console.log('[Auth][Register] Request payload', {
       ...requestPayload,
       password: `***len:${requestPayload.password.length}`,
