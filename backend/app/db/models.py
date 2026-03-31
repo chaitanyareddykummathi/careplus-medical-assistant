@@ -1,12 +1,6 @@
-from sqlalchemy import Column, Integer, String
+from app.models.health import AnalysisJob
+from app.models.prediction import KnowledgeChunk
+from app.models.symptom import SymptomRecord
+from app.models.user import User
 
-from app.db.base import Base
-
-
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), nullable=False)
-    email = Column(String(150), unique=True, index=True, nullable=False)
-    password = Column(String(255), nullable=False)
+__all__ = ['User', 'SymptomRecord', 'KnowledgeChunk', 'AnalysisJob']

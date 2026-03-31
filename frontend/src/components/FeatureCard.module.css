@@ -1,0 +1,39 @@
+.card {
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 16px;
+  box-shadow: var(--cp-shadow);
+  padding: 1.25rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.55);
+  transform: translateY(-2px);
+}
+
+.badge {
+  align-items: center;
+  background: rgba(37, 99, 235, 0.16);
+  border-radius: 999px;
+  color: var(--cp-primary-soft);
+  display: inline-flex;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  margin-bottom: 0.7rem;
+  padding: 0.3rem 0.65rem;
+  text-transform: uppercase;
+}
+
+.title {
+  color: var(--cp-text);
+  font-size: 1.1rem;
+  margin: 0 0 0.45rem;
+}
+
+.description {
+  color: var(--cp-text-muted);
+  font-size: 0.95rem;
+  margin: 0;
+}

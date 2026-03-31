@@ -1,0 +1,96 @@
+.wrapper {
+  align-items: center;
+  display: grid;
+  min-height: calc(100vh - 170px);
+  padding: 2.2rem 1rem;
+}
+
+.card {
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 18px;
+  box-shadow: var(--cp-shadow);
+  margin: 0 auto;
+  max-width: 500px;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.title {
+  color: var(--cp-text);
+  font-size: 1.7rem;
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--cp-text-muted);
+  margin: 0.45rem 0 1rem;
+}
+
+.form {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.input {
+  background: var(--cp-bg);
+  border: 1px solid var(--cp-border);
+  border-radius: 10px;
+  color: var(--cp-text);
+  font-size: 0.96rem;
+  margin-bottom: 0.5rem;
+  outline: none;
+  padding: 0.7rem 0.75rem;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.input:focus {
+  border-color: var(--cp-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+}
+
+.input::placeholder {
+  color: var(--cp-text-secondary);
+}
+
+.submitButton {
+  background: var(--cp-primary);
+  border: none;
+  border-radius: 10px;
+  color: #fff;
+  cursor: pointer;
+  font-size: 0.96rem;
+  font-weight: 700;
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+}
+
+.submitButton:disabled {
+  cursor: not-allowed;
+  opacity: 0.75;
+}
+
+.submitButton:not(:disabled):hover {
+  background: var(--cp-primary-dark);
+}
+
+.helperText {
+  color: var(--cp-text-secondary);
+  font-size: 0.9rem;
+  margin: 1rem 0 0;
+}
+
+.helperText a {
+  color: var(--cp-primary);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.helperText a:hover {
+  text-decoration: underline;
+}

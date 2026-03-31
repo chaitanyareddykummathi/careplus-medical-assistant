@@ -1,0 +1,48 @@
+.wrapper {
+  padding: 2.2rem 0;
+}
+
+.card {
+  background: var(--cp-surface);
+  border: 1px solid var(--cp-border);
+  border-radius: 18px;
+  box-shadow: var(--cp-shadow);
+  margin: 0 auto;
+  max-width: 900px;
+  padding: 1.4rem;
+}
+
+.title {
+  color: var(--cp-text);
+  font-size: 1.7rem;
+  margin: 0;
+}
+
+.subtitle {
+  color: var(--cp-text-muted);
+  margin: 0.45rem 0 0.9rem;
+}
+
+.metaRow {
+  color: var(--cp-text-secondary);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  gap: 1.2rem;
+  margin-bottom: 1rem;
+}
+
+.sectionTitle {
+  color: var(--cp-text);
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+.list {
+  color: var(--cp-text-muted);
+  display: grid;
+  gap: 0.55rem;
+  margin-bottom: 0;
+  margin-top: 0.65rem;
+  padding-left: 1.15rem;
+}

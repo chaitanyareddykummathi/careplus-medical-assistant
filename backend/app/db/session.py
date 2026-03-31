@@ -1,20 +1,24 @@
-import os
-
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
-from dotenv import load_dotenv
 
-load_dotenv()
+from app.core.config import get_settings
 
-DATABASE_URL = os.getenv("DB_URL")
+settings = get_settings()
 
-if not DATABASE_URL:
-    raise Exception("DB_URL not found in .env file")
+engine_kwargs: dict = {
+    'pool_pre_ping': True,
+    'future': True,
+}
 
-engine = create_engine(DATABASE_URL)
+if not settings.database_url.startswith('sqlite'):
+    engine_kwargs['pool_size'] = settings.db_pool_size
+    engine_kwargs['max_overflow'] = settings.db_max_overflow
+
+engine = create_engine(settings.database_url, **engine_kwargs)
 
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine
+    bind=engine,
+    expire_on_commit=False,
 )

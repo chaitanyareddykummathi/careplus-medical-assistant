@@ -1,0 +1,13 @@
+.footer {
+  background: var(--cp-surface);
+  border-top: 1px solid var(--cp-border);
+  margin-top: 2rem;
+  padding: 1rem 0;
+}
+
+.text {
+  color: var(--cp-text-secondary);
+  font-size: 0.85rem;
+  margin: 0;
+  text-align: center;
+}
