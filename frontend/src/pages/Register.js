@@ -61,22 +61,16 @@ function Register() {
       password: form.password,
       confirmPassword: form.confirmPassword,
       username: form.email.split('@')[0], // Optional username derived from email
-};
-    console.log('[Auth][Register] Request payload', {
-      ...requestPayload,
-      password: `***len:${requestPayload.password.length}`,
-    });
+    };
 
     try {
       const response = await registerUser(requestPayload);
-      console.log('[Auth][Register] Response', response);
 
       setSuccess(response?.message || 'Account created successfully. Redirecting to login...');
       setTimeout(() => {
         navigate('/login', { replace: true });
       }, 1200);
     } catch (apiError) {
-      console.error('[Auth][Register] Error', apiError?.response?.data || apiError);
       setError(getApiErrorMessage(apiError, 'Registration failed. Please try again.'));
     } finally {
       setLoading(false);

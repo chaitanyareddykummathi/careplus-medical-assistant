@@ -1,19 +1,20 @@
 :root {
-  --cp-bg: #0f172a;
-  --cp-surface: #111827;
-  --cp-surface-soft: #1e293b;
-  --cp-primary: #2563eb;
-  --cp-primary-dark: #1d4ed8;
-  --cp-primary-soft: #60a5fa;
-  --cp-text: #ffffff;
-  --cp-text-muted: #cbd5e1;
-  --cp-text-secondary: #94a3b8;
-  --cp-border: #334155;
-  --cp-success-bg: #052e1b;
-  --cp-success-text: #86efac;
-  --cp-error-bg: #3f1d1d;
-  --cp-error-text: #fca5a5;
-  --cp-shadow: 0 18px 36px rgba(2, 6, 23, 0.45);
+  --cp-bg: #f5f9ff;
+  --cp-surface: #ffffff;
+  --cp-surface-soft: #eaf4ff;
+  --cp-primary: #0756c8;
+  --cp-primary-dark: #06449d;
+  --cp-primary-soft: #d7ecff;
+  --cp-accent: #18a4e0;
+  --cp-text: #102033;
+  --cp-text-muted: #58708c;
+  --cp-text-secondary: #71869f;
+  --cp-border: #d8e6f5;
+  --cp-success-bg: #e9fbf1;
+  --cp-success-text: #176c3a;
+  --cp-error-bg: #fff1f1;
+  --cp-error-text: #b42318;
+  --cp-shadow: 0 16px 38px rgba(18, 52, 89, 0.1);
 }
 
 * {
@@ -29,7 +30,9 @@ body,
 }
 
 body {
-  background: var(--cp-bg);
+  background:
+    radial-gradient(circle at top left, rgba(24, 164, 224, 0.12), transparent 32rem),
+    var(--cp-bg);
   color: var(--cp-text);
   font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
   line-height: 1.5;
@@ -50,7 +53,7 @@ h6 {
 
 .container {
   margin: 0 auto;
-  max-width: 1120px;
+  max-width: 1180px;
   padding: 0 1rem;
 }
 

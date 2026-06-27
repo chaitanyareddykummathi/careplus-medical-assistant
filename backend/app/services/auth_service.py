@@ -16,6 +16,7 @@ from app.schemas.auth import (
     LoginRequest,
     RegisterRequest,
     RegisterResponse,
+    TokenData,
     TokenResponse,
     UserResponse,
 )
@@ -27,12 +28,9 @@ logger = logging.getLogger(__name__)
 class AuthService:
     def register_user(self, db: Session, payload: RegisterRequest) -> RegisterResponse:
         email = str(payload.email).strip().lower()
-        logger.info(
-            'Register attempt received.',
-            extra={'auth_email': email, 'auth_username': payload.username},
-        )
+        logger.info('Register attempt received.')
         if payload.confirm_password is not None and payload.password != payload.confirm_password:
-            logger.warning('Register failed: password mismatch.', extra={'auth_email': email})
+            logger.warning('Register failed: password mismatch.')
             raise AppException(
                 status_code=400,
                 error_code='PASSWORD_MISMATCH',
@@ -46,7 +44,7 @@ class AuthService:
             .first()
         )
         if existing_email:
-            logger.warning('Register failed: duplicate email.', extra={'auth_email': normalized_email})
+            logger.warning('Register failed: duplicate email.')
             raise AppException(
                 status_code=409,
                 error_code='EMAIL_ALREADY_EXISTS',
@@ -61,10 +59,7 @@ class AuthService:
                 .first()
             )
             if existing_username:
-                logger.warning(
-                    'Register failed: duplicate username.',
-                    extra={'auth_username': normalized_username},
-                )
+                logger.warning('Register failed: duplicate username.')
                 raise AppException(
                     status_code=409,
                     error_code='USERNAME_ALREADY_EXISTS',
@@ -86,11 +81,7 @@ class AuthService:
             db.refresh(new_user)
         except IntegrityError as exc:
             db.rollback()
-            print("real db error",str(exc))
-            logger.warning(
-                'Register failed: integrity violation.',
-                extra={'auth_email': normalized_email},
-            )
+            logger.warning('Register failed: integrity violation.')
             raise AppException(
                 status_code=409,
                 error_code='ACCOUNT_ALREADY_EXISTS',
@@ -98,23 +89,24 @@ class AuthService:
             ) from exc
         except SQLAlchemyError as exc:
             db.rollback()
-            logger.exception('Register failed: database error.', extra={'auth_email': normalized_email})
+            logger.exception('Register failed: database error.')
             raise AppException(
                 status_code=500,
                 error_code='DATABASE_ERROR',
                 message='Unable to register right now. Please try again shortly.',
             ) from exc
 
-        logger.info('Register successful.', extra={'user_id': new_user.id, 'auth_email': normalized_email})
+        logger.info('Register successful.', extra={'user_id': new_user.id})
 
-        return RegisterResponse(success=True, message='User registered')
+        token_response = self._build_token_response(new_user, message='User registered successfully.')
+        return RegisterResponse(**token_response.model_dump())
 
     def login_user(self, db: Session, payload: LoginRequest) -> TokenResponse:
         identifier = payload.resolved_identifier
-        logger.info('Login attempt received.', extra={'auth_identifier': identifier})
+        logger.info('Login attempt received.')
         user = self._find_user_by_identifier(db, identifier)
         if not user:
-            logger.warning('Login failed: user not found.', extra={'auth_identifier': identifier})
+            logger.warning('Login failed: user not found.')
             raise AppException(
                 status_code=401,
                 error_code='INVALID_CREDENTIALS',
@@ -146,7 +138,7 @@ class AuthService:
             )
 
         logger.info('Login successful.', extra={'user_id': user.id})
-        return self._build_token_response(user)
+        return self._build_token_response(user, message='Login successful.')
 
     def google_login(self, db: Session, payload: GoogleLoginRequest) -> TokenResponse:
         logger.info('Google login attempt received.')
@@ -185,7 +177,7 @@ class AuthService:
             ) from exc
 
         email = (token_data.get('email') or '').strip().lower()
-        logger.info('Google token verified.', extra={'auth_email': email})
+        logger.info('Google token verified.')
         if not email:
             raise AppException(
                 status_code=400,
@@ -221,19 +213,19 @@ class AuthService:
                 db.refresh(user)
             except SQLAlchemyError as exc:
                 db.rollback()
-                logger.exception('Google login failed: database error.', extra={'auth_email': email})
+                logger.exception('Google login failed: database error.')
                 raise AppException(
                     status_code=500,
                     error_code='DATABASE_ERROR',
                     message='Unable to complete Google sign-in. Please try again.',
                 ) from exc
-            logger.info('Google login created new user.', extra={'user_id': user.id, 'auth_email': email})
+            logger.info('Google login created new user.', extra={'user_id': user.id})
         else:
-            logger.info('Google login matched existing user.', extra={'user_id': user.id, 'auth_email': email})
+            logger.info('Google login matched existing user.', extra={'user_id': user.id})
 
-        return self._build_token_response(user)
+        return self._build_token_response(user, message='Login successful.')
 
-    def _build_token_response(self, user: User) -> TokenResponse:
+    def _build_token_response(self, user: User, message: str) -> TokenResponse:
         token = create_access_token(
             subject=str(user.id),
             additional_claims={
@@ -242,9 +234,13 @@ class AuthService:
             },
         )
         return TokenResponse(
-            access_token=token,
-            expires_in=settings.jwt_access_token_exp_minutes * 60,
-            user=self.to_user_response(user),
+            success=True,
+            message=message,
+            data=TokenData(
+                access_token=token,
+                expires_in=settings.jwt_access_token_exp_minutes * 60,
+                user=self.to_user_response(user),
+            ),
         )
 
     @staticmethod

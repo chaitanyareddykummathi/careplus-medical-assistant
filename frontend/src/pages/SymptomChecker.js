@@ -1,66 +1,29 @@
 import React, { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 
-import styles from './Dashboard.module.css';
 import { analyzeSymptoms, getApiErrorMessage } from '../services/api';
+import styles from './CarePages.module.css';
 
 const LAST_RESULT_KEY = 'careplus_last_symptom_result';
-
-const textareaStyle = {
-  border: '1px solid var(--cp-border)',
-  borderRadius: '12px',
-  color: 'var(--cp-text)',
-  fontSize: '0.98rem',
-  marginTop: '0.35rem',
-  minHeight: '180px',
-  outline: 'none',
-  padding: '0.8rem',
-  resize: 'vertical',
-  width: '100%',
-};
-
-const actionsRowStyle = {
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '0.7rem',
-  marginTop: '1rem',
-};
-
-const primaryButtonStyle = {
-  background: 'var(--cp-primary)',
-  border: 'none',
-  borderRadius: '10px',
-  color: '#fff',
-  cursor: 'pointer',
-  fontSize: '0.94rem',
-  fontWeight: 700,
-  padding: '0.65rem 0.95rem',
-};
-
-const secondaryButtonStyle = {
-  background: 'transparent',
-  border: '1px solid var(--cp-border)',
-  borderRadius: '10px',
-  color: 'var(--cp-text)',
-  cursor: 'pointer',
-  fontSize: '0.94rem',
-  fontWeight: 700,
-  padding: '0.65rem 0.95rem',
-  textDecoration: 'none',
-};
-
-const resultCardStyle = {
-  border: '1px solid var(--cp-border)',
-  borderRadius: '12px',
-  marginTop: '1rem',
-  padding: '0.9rem',
-};
-
 const riskColorMap = {
-  HIGH: '#ef4444',
-  MEDIUM: '#f59e0b',
-  LOW: '#22c55e',
+  HIGH: '#dc2626',
+  MEDIUM: '#d97706',
+  LOW: '#15803d',
 };
+
+function ListBlock({ title, items }) {
+  if (!Array.isArray(items) || items.length === 0) return null;
+  return (
+    <div>
+      <h3 className={styles.cardTitle}>{title}</h3>
+      <ul className={styles.list}>
+        {items.map((item) => (
+          <li key={typeof item === 'string' ? item : JSON.stringify(item)}>{String(item)}</li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 function SymptomChecker() {
   const [text, setText] = useState('');
@@ -86,95 +49,102 @@ function SymptomChecker() {
     try {
       const analysis = await analyzeSymptoms({ text: text.trim() });
       setResult(analysis);
-
-      localStorage.setItem(
-        LAST_RESULT_KEY,
-        JSON.stringify({
-          ...analysis,
-          analyzed_at: new Date().toISOString(),
-        })
-      );
+      localStorage.setItem(LAST_RESULT_KEY, JSON.stringify({ ...analysis, analyzed_at: new Date().toISOString() }));
     } catch (error) {
-      console.error('[SymptomChecker] Failed to analyze symptoms', error);
-      setErrorMessage(
-        getApiErrorMessage(error, 'Could not analyze symptoms right now. Please try again.')
-      );
+      setErrorMessage(getApiErrorMessage(error, 'Could not analyze symptoms right now. Please try again.'));
     } finally {
       setIsAnalyzing(false);
     }
   };
 
   return (
-    <section className={styles.wrapper}>
+    <section className={styles.page}>
       <div className="container">
-        <div className={styles.card}>
-          <h1 className={styles.title}>Symptom Checker</h1>
-          <p className={styles.subtitle}>
-            Describe symptoms in plain text and receive a structured AI-assisted risk response.
-          </p>
+        <p className={styles.eyebrow}>AI symptom checker</p>
+        <h1 className={styles.title}>Describe symptoms in plain language</h1>
+        <p className={styles.subtitle}>
+          CarePlus will structure the response into risk, confidence, possible conditions, recommended specialist,
+          home care, warning signs and hospital options.
+        </p>
 
-          {errorMessage ? <p className="alert alertError">{errorMessage}</p> : null}
-
-          <form onSubmit={handleSubmit}>
-            <label htmlFor="symptom-text" style={{ display: 'block', fontWeight: 600 }}>
+        <div className={`${styles.twoColumn} ${styles.section}`}>
+          <form className={`${styles.card} ${styles.formGrid}`} onSubmit={handleSubmit}>
+            {errorMessage ? <p className="alert alertError">{errorMessage}</p> : null}
+            <label className={styles.label}>
               Symptoms
+              <textarea
+                className={styles.textarea}
+                onChange={(event) => setText(event.target.value)}
+                placeholder="Example: I have fever, headache and body pain for 2 days."
+                value={text}
+              />
             </label>
-            <textarea
-              id="symptom-text"
-              onChange={(event) => setText(event.target.value)}
-              placeholder="Example: I have fever, headache and body pain for 2 days."
-              style={textareaStyle}
-              value={text}
-            />
-
-            <div style={actionsRowStyle}>
-              <button disabled={isAnalyzing} style={primaryButtonStyle} type="submit">
-                {isAnalyzing ? 'Analyzing...' : 'Analyze Symptoms'}
-              </button>
-              <Link style={secondaryButtonStyle} to="/dashboard">
-                Back to Dashboard
-              </Link>
-            </div>
+            <button className={styles.button} disabled={isAnalyzing} type="submit">
+              {isAnalyzing ? 'Analyzing...' : 'Analyze Symptoms'}
+            </button>
           </form>
 
-          {result ? (
-            <div style={resultCardStyle}>
-              <h2 className={styles.sectionTitle}>Analysis Result</h2>
-              <p style={{ color: riskColor, fontWeight: 700, marginBottom: '0.4rem' }}>
-                Risk Level: {result.risk_level}
-              </p>
-              <p className={styles.subtitle} style={{ marginTop: 0 }}>
-                Confidence: {Math.round(Number(result.confidence || 0) * 100)}%
-              </p>
+          <div className={styles.card}>
+            <h2 className={styles.cardTitle}>Chatbot Response</h2>
+            {!result ? <p className={styles.muted}>Your structured medical triage summary will appear here.</p> : null}
+            {result ? (
+              <div className={styles.formGrid}>
+                <div className={styles.card} style={{ borderColor: riskColor, boxShadow: 'none' }}>
+                  <p className={styles.eyebrow}>Analysis Summary</p>
+                  <p className={styles.muted}>{result.analysis_summary || result.recommendation}</p>
+                  <div className={styles.metaRow}>
+                    <span className={styles.pill} style={{ color: riskColor }}>
+                      Risk Level: {result.risk_level}
+                    </span>
+                    <span className={styles.pill}>Confidence: {Math.round(Number(result.confidence || 0) * 100)}%</span>
+                    <span className={styles.pill}>Urgency: {result.urgency}</span>
+                  </div>
+                </div>
 
-              <h3 style={{ marginBottom: '0.35rem' }}>Extracted Symptoms</h3>
-              {Array.isArray(result.extracted_symptoms) && result.extracted_symptoms.length > 0 ? (
-                <ul className={styles.list}>
-                  {result.extracted_symptoms.map((symptom) => (
-                    <li key={symptom}>{symptom}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={styles.subtitle}>No symptoms were extracted.</p>
-              )}
+                <ListBlock title="Symptoms Detected" items={result.extracted_symptoms} />
+                <ListBlock title="Possible Conditions" items={result.possible_conditions} />
 
-              <h3 style={{ marginBottom: '0.35rem', marginTop: '0.9rem' }}>Possible Conditions</h3>
-              {Array.isArray(result.possible_conditions) && result.possible_conditions.length > 0 ? (
-                <ul className={styles.list}>
-                  {result.possible_conditions.map((condition) => (
-                    <li key={condition}>{condition}</li>
-                  ))}
-                </ul>
-              ) : (
-                <p className={styles.subtitle}>No condition mapping available.</p>
-              )}
+                <div>
+                  <h3 className={styles.cardTitle}>Condition Explanation</h3>
+                  <p className={styles.muted}>{result.condition_explanation}</p>
+                </div>
 
-              <h3 style={{ marginBottom: '0.35rem', marginTop: '0.9rem' }}>Recommendation</h3>
-              <p className={styles.subtitle} style={{ marginTop: 0 }}>
-                {result.recommendation}
-              </p>
-            </div>
-          ) : null}
+                <div className={styles.metaRow}>
+                  <span className={styles.pill}>Specialist: {result.recommended_specialist}</span>
+                  <span className={styles.pill}>Department: {result.recommended_department}</span>
+                </div>
+
+                <ListBlock title="Home Care Advice" items={result.home_care_advice} />
+                <ListBlock title="Lifestyle Advice" items={result.lifestyle_advice} />
+                <ListBlock title="Warning Signs" items={result.warning_signs} />
+                <ListBlock title="Emergency Symptoms" items={result.emergency_symptoms} />
+                <ListBlock title="Recommended Medical Tests" items={result.recommended_tests} />
+
+                <div>
+                  <h3 className={styles.cardTitle}>When To Visit Hospital</h3>
+                  <p className={styles.muted}>{result.when_to_visit_hospital}</p>
+                </div>
+
+                {Array.isArray(result.nearby_hospitals) && result.nearby_hospitals.length > 0 ? (
+                  <div>
+                    <h3 className={styles.cardTitle}>Nearby Hospitals</h3>
+                    <div className={styles.metaRow}>
+                      {result.nearby_hospitals.map((hospital) => (
+                        <span className={styles.pill} key={hospital.id}>
+                          {hospital.name} · {hospital.city}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <Link className={styles.button} to="/appointments">
+                  Book Appointment
+                </Link>
+                <p className={styles.muted}>{result.medical_disclaimer}</p>
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
     </section>
@@ -182,4 +152,3 @@ function SymptomChecker() {
 }
 
 export default SymptomChecker;
-

@@ -35,24 +35,15 @@ function Login({ onLoginSuccess }) {
     }
 
     setLoading(true);
-    console.log('[Auth][Login] Request payload', {
-      email: form.email.trim().toLowerCase(),
-      password: `***len:${form.password.length}`,
-    });
 
     try {
       const session = await loginUser({
         email: form.email.trim().toLowerCase(),
         password: form.password,
       });
-      console.log('[Auth][Login] Response session', {
-        hasAccessToken: Boolean(session?.accessToken),
-        userId: session?.user?.id,
-      });
       onLoginSuccess(session);
       navigate('/dashboard', { replace: true });
     } catch (apiError) {
-      console.error('[Auth][Login] Error', apiError?.response?.data || apiError);
       setError(getApiErrorMessage(apiError, 'Unable to sign in. Please verify your credentials.'));
     } finally {
       setLoading(false);
@@ -68,21 +59,12 @@ function Login({ onLoginSuccess }) {
 
     setError('');
     setGoogleLoading(true);
-    console.log('[Auth][Google] Request credential', {
-      tokenPrefix: token.slice(0, 15),
-      tokenLength: token.length,
-    });
 
     try {
       const session = await googleLogin({ token });
-      console.log('[Auth][Google] Response session', {
-        hasAccessToken: Boolean(session?.accessToken),
-        userId: session?.user?.id,
-      });
       onLoginSuccess(session);
       navigate('/dashboard', { replace: true });
     } catch (apiError) {
-      console.error('[Auth][Google] Error', apiError?.response?.data || apiError);
       setError(getApiErrorMessage(apiError, 'Google sign-in failed. Please try again.'));
     } finally {
       setGoogleLoading(false);

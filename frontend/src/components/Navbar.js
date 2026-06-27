@@ -9,6 +9,7 @@ function Navbar({ isAuthenticated, onLogout }) {
       <div className="container">
         <div className={styles.navbar}>
           <Link className={styles.brand} to="/">
+            <span className={styles.brandMark}>+</span>
             CarePlus
           </Link>
 
@@ -16,29 +17,32 @@ function Navbar({ isAuthenticated, onLogout }) {
             <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/">
               Home
             </NavLink>
-            <a className={styles.link} href="/#features">
-              Features
-            </a>
 
             {isAuthenticated ? (
               <>
                 <NavLink
                   className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
-                  to="/dashboard"
-                >
-                  Dashboard
-                </NavLink>
-                <NavLink
-                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
-                  to="/health-profile"
-                >
-                  Health Profile
-                </NavLink>
-                <NavLink
-                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
                   to="/symptom-checker"
                 >
                   Symptom Checker
+                </NavLink>
+                <NavLink
+                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  to="/hospitals"
+                >
+                  Hospitals
+                </NavLink>
+                <NavLink
+                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  to="/appointments"
+                >
+                  Appointments
+                </NavLink>
+                <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/about">
+                  About
+                </NavLink>
+                <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/profile">
+                  Profile
                 </NavLink>
                 <button className={styles.logoutButton} onClick={onLogout} type="button">
                   Logout
@@ -46,6 +50,15 @@ function Navbar({ isAuthenticated, onLogout }) {
               </>
             ) : (
               <>
+                <NavLink
+                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  to="/hospitals"
+                >
+                  Hospitals
+                </NavLink>
+                <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/about">
+                  About
+                </NavLink>
                 <NavLink
                   className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
                   to="/login"

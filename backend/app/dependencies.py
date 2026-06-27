@@ -1,4 +1,6 @@
 from app.services.health_profile_service import HealthProfileService, health_profile_service
+from app.services.appointment_service import AppointmentService, appointment_service
+from app.services.hospital_service import HospitalService, hospital_service
 from app.services.symptom_analysis_service import (
     SymptomAnalysisService,
     symptom_analysis_service,
@@ -11,3 +13,11 @@ def get_health_profile_service() -> HealthProfileService:
 
 def get_symptom_analysis_service() -> SymptomAnalysisService:
     return symptom_analysis_service
+
+
+def get_hospital_service() -> HospitalService:
+    return hospital_service
+
+
+def get_appointment_service() -> AppointmentService:
+    return appointment_service

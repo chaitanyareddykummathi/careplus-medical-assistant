@@ -76,6 +76,10 @@ function persistSession({ accessToken, user }) {
   }
 }
 
+function getAuthData(responseData) {
+  return responseData?.data?.access_token ? responseData.data : responseData;
+}
+
 export function clearStoredSession() {
   localStorage.removeItem(STORAGE_KEYS.accessToken);
   localStorage.removeItem(STORAGE_KEYS.legacyAccessToken);
@@ -140,9 +144,10 @@ export async function loginUser(payload) {
   }
 
   const { data } = await http.post(withApiPrefix('/auth/login'), body);
+  const authData = getAuthData(data);
   const session = {
-    accessToken: data.access_token,
-    user: data.user || null,
+    accessToken: authData.access_token,
+    user: authData.user || null,
   };
   persistSession(session);
   return session;
@@ -150,12 +155,28 @@ export async function loginUser(payload) {
 
 export async function googleLogin(payload) {
   const { data } = await http.post(withApiPrefix('/auth/google'), payload);
+  const authData = getAuthData(data);
   const session = {
-    accessToken: data.access_token,
-    user: data.user || null,
+    accessToken: authData.access_token,
+    user: authData.user || null,
   };
   persistSession(session);
   return session;
+}
+
+export async function getCurrentUser() {
+  const { data } = await http.get(withApiPrefix('/auth/me'));
+  return data?.data || data;
+}
+
+export async function logoutUser() {
+  try {
+    await http.post(withApiPrefix('/auth/logout'));
+  } catch {
+    // Local logout should still complete if the token is already invalid or the API is unavailable.
+  } finally {
+    clearStoredSession();
+  }
 }
 
 export async function getHealthProfile() {
@@ -183,6 +204,36 @@ export async function updateHealthProfile(payload) {
 export async function analyzeSymptoms(payload) {
   const { data } = await http.post(withApiPrefix('/nlp/analyze-symptoms'), payload);
   return data;
+}
+
+export async function getHospitals(filters = {}) {
+  const { data } = await http.get(withApiPrefix('/hospitals'), { params: filters });
+  return data?.data || data;
+}
+
+export async function getSpecialties() {
+  const { data } = await http.get(withApiPrefix('/hospitals/specialties'));
+  return data?.data || data;
+}
+
+export async function getAppointments() {
+  const { data } = await http.get(withApiPrefix('/appointments'));
+  return data?.data || data;
+}
+
+export async function bookAppointment(payload) {
+  const { data } = await http.post(withApiPrefix('/appointments'), payload);
+  return data?.data || data;
+}
+
+export async function cancelAppointment(appointmentId) {
+  const { data } = await http.patch(withApiPrefix(`/appointments/${appointmentId}/cancel`));
+  return data?.data || data;
+}
+
+export async function rescheduleAppointment(appointmentId, payload) {
+  const { data } = await http.patch(withApiPrefix(`/appointments/${appointmentId}/reschedule`), payload);
+  return data?.data || data;
 }
 
 export function getApiErrorMessage(error, fallbackMessage = 'Something went wrong.') {

@@ -1,86 +1,123 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 
-import FeatureCard from '../components/FeatureCard';
 import styles from './Landing.module.css';
 
+const categories = [
+  'General Physician',
+  'Cardiology',
+  'Neurology',
+  'Dermatology',
+  'Pulmonology',
+  'Orthopedics',
+  'Pediatrics',
+  'Mental Health',
+];
+
 const features = [
-  {
-    badge: 'AI',
-    title: 'Symptom Checker',
-    description:
-      'Describe your symptoms in natural language and receive an intelligent preliminary assessment in seconds.',
-  },
-  {
-    badge: 'Risk',
-    title: 'Risk & Severity Detection',
-    description:
-      'Identify potential urgency levels early so users can prioritize action and avoid delays in care.',
-  },
-  {
-    badge: 'Specialist',
-    title: 'Specialist Recommendation',
-    description:
-      'Map symptoms to the right care path and specialist type with transparent recommendation signals.',
-  },
-  {
-    badge: 'Booking',
-    title: 'Appointment Booking',
-    description:
-      'Move from assessment to care in one flow by booking follow-up appointments directly in-platform.',
-  },
+  ['AI Symptom Checker', 'Structured symptom extraction, risk level, confidence and safety guidance.'],
+  ['Hospital Recommendation', 'Relevant simulated hospitals based on specialty, department and triage context.'],
+  ['Appointment Booking', 'Choose hospital, doctor, date and time with booking history and cancellation.'],
+  ['Health Profile', 'Preserve existing patient profile workflow for personalized analysis context.'],
 ];
 
 function Landing() {
   return (
     <div className={styles.page}>
-      <section className={styles.heroSection}>
+      <section className={styles.hero}>
         <div className="container">
-          <div className={styles.heroLayout}>
-            <div>
-              <p className={styles.kicker}>Digital triage for modern healthcare delivery</p>
-              <h1 className={styles.heroTitle}>AI-Powered Medical Assistant</h1>
+          <div className={styles.heroGrid}>
+            <div className={styles.heroCopy}>
+              <p className={styles.kicker}>Healthcare guidance for everyday decisions</p>
+              <h1 className={styles.heroTitle}>CarePlus</h1>
               <p className={styles.heroSubtitle}>
-                Analyze symptoms, assess risk, and connect with the right doctor instantly.
+                Analyze symptoms, understand urgency, find the right specialist and book a simulated appointment in one
+                clean medical workflow.
               </p>
               <div className={styles.ctaRow}>
-                <Link className={styles.primaryButton} to="/register">
-                  Get Started
+                <Link className={styles.primaryButton} to="/symptom-checker">
+                  Start Symptom Check
                 </Link>
-                <Link className={styles.secondaryButton} to="/login">
-                  Login
+                <Link className={styles.secondaryButton} to="/hospitals">
+                  View Hospitals
                 </Link>
               </div>
             </div>
-
-            <aside className={styles.heroPanel}>
-              <h2>Care flow after sign-in</h2>
-              <ol className={styles.flowList}>
-                <li>Complete your health profile for personalized context</li>
-                <li>Enter symptoms in plain language</li>
-                <li>Receive AI analysis with severity and specialist matching</li>
-                <li>Book an appointment with the recommended doctor</li>
-              </ol>
-            </aside>
+            <div className={styles.heroVisual} aria-label="Medical assistant illustration">
+              <div className={styles.doctorBadge}>AI Triage</div>
+              <div className={styles.vitalsPanel}>
+                <span>Risk</span>
+                <strong>Low to High</strong>
+              </div>
+              <div className={styles.medicalCross}>+</div>
+            </div>
           </div>
         </div>
       </section>
 
-      <section className={styles.featureSection} id="features">
+      <section className={styles.section}>
         <div className="container">
-          <h2 className={styles.sectionTitle}>Core Platform Features</h2>
-          <p className={styles.sectionSubtitle}>
-            Built to support safer, faster, and more connected patient journeys.
-          </p>
+          <div className={styles.stats}>
+            <div><strong>30+</strong><span>Specialties</span></div>
+            <div><strong>5</strong><span>Indian cities</span></div>
+            <div><strong>24x7</strong><span>Emergency mapping</span></div>
+            <div><strong>100%</strong><span>Simulated booking</span></div>
+          </div>
+        </div>
+      </section>
 
+      <section className={styles.section}>
+        <div className="container">
+          <p className={styles.kicker}>Why CarePlus</p>
+          <h2 className={styles.sectionTitle}>Professional healthcare flow for a final-year project</h2>
           <div className={styles.grid}>
-            {features.map((feature) => (
-              <FeatureCard
-                key={feature.title}
-                badge={feature.badge}
-                description={feature.description}
-                title={feature.title}
-              />
+            {features.map(([title, description]) => (
+              <article className={styles.card} key={title}>
+                <h3>{title}</h3>
+                <p>{description}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className="container">
+          <p className={styles.kicker}>Healthcare categories</p>
+          <div className={styles.categoryWrap}>
+            {categories.map((category) => (
+              <span className={styles.category} key={category}>
+                {category}
+              </span>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className="container">
+          <div className={styles.howItWorks}>
+            {['Describe symptoms', 'Review structured guidance', 'Choose hospital', 'Book appointment'].map(
+              (step, index) => (
+                <div key={step}>
+                  <span>{index + 1}</span>
+                  <strong>{step}</strong>
+                </div>
+              )
+            )}
+          </div>
+        </div>
+      </section>
+
+      <section className={styles.section}>
+        <div className="container">
+          <div className={styles.testimonials}>
+            {[
+              'The flow from symptoms to appointment feels clear and realistic.',
+              'The structured analysis is easy to present in a project demo.',
+              'Hospital cards and booking history make the app feel complete.',
+            ].map((quote) => (
+              <blockquote key={quote}>{quote}</blockquote>
             ))}
           </div>
         </div>

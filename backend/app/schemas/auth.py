@@ -89,13 +89,30 @@ class UserResponse(BaseModel):
     created_at: datetime
 
 
-class RegisterResponse(BaseModel):
-    success: bool = True
-    message: str
-
-
-class TokenResponse(BaseModel):
+class TokenData(BaseModel):
     access_token: str
     token_type: str = 'bearer'
     expires_in: int
     user: UserResponse
+
+
+class TokenResponse(BaseModel):
+    success: bool = True
+    message: str
+    data: TokenData
+
+
+class RegisterResponse(TokenResponse):
+    pass
+
+
+class UserProfileResponse(BaseModel):
+    success: bool = True
+    message: str = 'User profile retrieved successfully.'
+    data: UserResponse
+
+
+class LogoutResponse(BaseModel):
+    success: bool = True
+    message: str = 'Logout successful.'
+    data: dict = Field(default_factory=dict)

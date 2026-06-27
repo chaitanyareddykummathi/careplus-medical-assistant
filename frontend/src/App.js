@@ -3,13 +3,16 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 
 import Footer from './components/Footer';
 import Navbar from './components/Navbar';
+import About from './pages/About';
+import Appointments from './pages/Appointments';
 import Dashboard from './pages/Dashboard';
 import HealthProfile from './pages/HealthProfile';
+import Hospitals from './pages/Hospitals';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SymptomChecker from './pages/SymptomChecker';
-import { clearStoredSession, getStoredSession } from './services/api';
+import { getStoredSession, logoutUser } from './services/api';
 
 function ProtectedRoute({ isAuthenticated, children }) {
   if (!isAuthenticated) {
@@ -27,8 +30,8 @@ function App() {
     setSession(nextSession);
   };
 
-  const handleLogout = () => {
-    clearStoredSession();
+  const handleLogout = async () => {
+    await logoutUser();
     setSession(null);
   };
 
@@ -45,7 +48,7 @@ function App() {
             path="/login"
             element={
               isAuthenticated ? (
-                <Navigate replace to="/dashboard" />
+                <Navigate replace to="/symptom-checker" />
               ) : (
                 <Login onLoginSuccess={handleLoginSuccess} />
               )
@@ -53,7 +56,7 @@ function App() {
           />
           <Route
             path="/register"
-            element={isAuthenticated ? <Navigate replace to="/dashboard" /> : <Register />}
+            element={isAuthenticated ? <Navigate replace to="/symptom-checker" /> : <Register />}
           />
           <Route
             path="/dashboard"
@@ -80,6 +83,24 @@ function App() {
             }
           />
           <Route path="/symptoms" element={<Navigate replace to="/symptom-checker" />} />
+          <Route path="/hospitals" element={<Hospitals />} />
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <Appointments user={session?.user} />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute isAuthenticated={isAuthenticated}>
+                <HealthProfile />
+              </ProtectedRoute>
+            }
+          />
+          <Route path="/about" element={<About />} />
           <Route path="*" element={<Navigate replace to="/" />} />
         </Routes>
       </main>

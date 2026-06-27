@@ -76,19 +76,20 @@ def get_settings() -> Settings:
     if not database_url:
         raise RuntimeError('Set DB_URL or DATABASE_URL in environment.')
 
+    environment = os.getenv('APP_ENV', 'development')
+    jwt_secret_key = os.getenv('JWT_SECRET_KEY') or os.getenv('JWT_SECRET')
+    if not jwt_secret_key and environment.lower() not in {'development', 'dev', 'local', 'test'}:
+        raise RuntimeError('Set JWT_SECRET_KEY in environment.')
+
     return Settings(
         app_name=os.getenv('APP_NAME', 'CarePlus Medical Assistant'),
-        environment=os.getenv('APP_ENV', 'development'),
+        environment=environment,
         debug=_as_bool(os.getenv('APP_DEBUG'), False),
         api_v1_prefix=os.getenv('API_V1_PREFIX', '/api/v1'),
         database_url=database_url,
         db_pool_size=_as_int(os.getenv('DB_POOL_SIZE'), 10),
         db_max_overflow=_as_int(os.getenv('DB_MAX_OVERFLOW'), 20),
-        jwt_secret_key=(
-            os.getenv('JWT_SECRET_KEY')
-            or os.getenv('JWT_SECRET')
-            or 'change-me-in-production'
-        ),
+        jwt_secret_key=jwt_secret_key or 'change-me-in-production',
         jwt_algorithm=os.getenv('JWT_ALGORITHM', 'HS256'),
         jwt_access_token_exp_minutes=_as_int(os.getenv('JWT_ACCESS_TOKEN_EXP_MINUTES'), 30),
         google_oauth_client_id=(

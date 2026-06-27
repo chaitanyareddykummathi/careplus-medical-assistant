@@ -29,9 +29,15 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.status_code,
             content={
-                'error_code': exc.error_code,
+                'success': False,
                 'message': exc.message,
-                'details': exc.details,
+                'errors': [
+                    {
+                        'field': None,
+                        'message': exc.message,
+                        'code': exc.error_code,
+                    }
+                ],
             },
         )
 
@@ -40,9 +46,15 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=422,
             content={
-                'error_code': 'VALIDATION_ERROR',
+                'success': False,
                 'message': 'Request payload is invalid.',
-                'details': exc.errors(),
+                'errors': [
+                    {
+                        'field': '.'.join(str(part) for part in error.get('loc', [])),
+                        'message': error.get('msg', 'Invalid value.'),
+                    }
+                    for error in exc.errors()
+                ],
             },
         )
 
@@ -51,8 +63,14 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=exc.status_code,
             content={
-                'error_code': 'HTTP_ERROR',
+                'success': False,
                 'message': str(exc.detail),
+                'errors': [
+                    {
+                        'field': None,
+                        'message': str(exc.detail),
+                    }
+                ],
             },
         )
 
@@ -62,7 +80,13 @@ def register_exception_handlers(app: FastAPI) -> None:
         return JSONResponse(
             status_code=500,
             content={
-                'error_code': 'INTERNAL_SERVER_ERROR',
+                'success': False,
                 'message': 'An unexpected error occurred.',
+                'errors': [
+                    {
+                        'field': None,
+                        'message': 'An unexpected error occurred.',
+                    }
+                ],
             },
         )

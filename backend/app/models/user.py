@@ -36,3 +36,9 @@ class User(TimestampMixin, Base):
         cascade='all, delete-orphan',
         lazy='selectin',
     )
+    appointments = relationship(
+        'Appointment',
+        back_populates='user',
+        cascade='all, delete-orphan',
+        lazy='selectin',
+    )
