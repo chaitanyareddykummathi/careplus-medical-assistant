@@ -1,39 +1,71 @@
 .card {
-  background: var(--cp-surface);
+  background: var(--cp-white);
   border: 1px solid var(--cp-border);
-  border-radius: 16px;
-  box-shadow: var(--cp-shadow);
-  padding: 1.25rem;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  box-shadow: var(--shadow-md);
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1rem;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s ease;
 }
 
 .card:hover {
-  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.55);
-  transform: translateY(-2px);
+  border-color: rgba(37, 99, 235, 0.2);
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-bottom: 0.5rem;
+}
+
+.iconWrapper {
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--cp-primary-light);
+  color: var(--accent-color);
+  transition: all 0.3s ease;
+}
+
+.card:hover .iconWrapper {
+  transform: scale(1.1) rotate(5deg);
+}
+
+.icon {
+  display: block;
 }
 
 .badge {
-  align-items: center;
-  background: rgba(37, 99, 235, 0.16);
-  border-radius: 999px;
-  color: var(--cp-primary-soft);
-  display: inline-flex;
-  font-size: 0.75rem;
+  background-color: var(--cp-primary-light);
+  color: var(--cp-primary);
+  font-size: 0.7rem;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  margin-bottom: 0.7rem;
-  padding: 0.3rem 0.65rem;
+  padding: 0.25rem 0.6rem;
+  border-radius: var(--radius-full);
   text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
 .title {
-  color: var(--cp-text);
-  font-size: 1.1rem;
-  margin: 0 0 0.45rem;
+  font-size: 1.25rem;
+  font-weight: 700;
+  margin: 0;
+  font-family: var(--font-display);
 }
 
 .description {
-  color: var(--cp-text-muted);
   font-size: 0.95rem;
+  color: var(--cp-subtext);
+  line-height: 1.6;
   margin: 0;
 }

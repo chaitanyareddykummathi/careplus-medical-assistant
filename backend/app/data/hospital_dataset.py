@@ -151,3 +151,118 @@ COMMON_SPECIALTIES = [
     "Infectious Disease",
     "Allergy",
 ]
+
+COMMON_DEPARTMENTS = [
+    "General Medicine",
+    "Cardiology",
+    "Neurology",
+    "Dermatology",
+    "Orthopedics",
+    "Pulmonology",
+    "Gastroenterology",
+    "Endocrinology",
+    "ENT",
+    "Dentistry",
+    "Psychiatry",
+    "Psychology",
+    "Nephrology",
+    "Urology",
+    "Gynecology",
+    "Pediatrics",
+    "Oncology",
+    "Ophthalmology",
+    "Rheumatology",
+    "Immunology",
+    "Emergency Medicine",
+    "Radiology",
+    "Plastic Surgery",
+    "Neurosurgery",
+    "Cardiac Surgery",
+    "Nutrition",
+    "Physiotherapy",
+    "Sports Medicine",
+    "Diabetology",
+    "Pain Management",
+    "Hematology",
+    "Infectious Disease",
+    "Allergy",
+]
+
+COMMON_DISEASE_CATEGORIES = [
+    "Fever and infection",
+    "Cold, cough and breathing issues",
+    "Chest pain and heart symptoms",
+    "Headache, dizziness and nerve symptoms",
+    "Stomach pain and digestion",
+    "Bone, joint and muscle pain",
+    "Skin, allergy and rashes",
+    "Diabetes and hormone concerns",
+    "Eye, ENT and dental concerns",
+    "Mental health and sleep concerns",
+    "Women and child health",
+    "Emergency injury or severe symptoms",
+]
+
+
+def _network_hospital(
+    hospital_id: str,
+    name: str,
+    city: str,
+    state: str,
+    address: str,
+    phone: str,
+    rating: float,
+    fee: int,
+    distance: float,
+    image_url: str,
+    doctors: list[dict],
+) -> dict:
+    return {
+        "id": hospital_id,
+        "name": name,
+        "city": city,
+        "state": state,
+        "address": address,
+        "phone": phone,
+        "email": f"appointments.{hospital_id}@careplus.example",
+        "rating": rating,
+        "departments": COMMON_DEPARTMENTS,
+        "opening_hours": "24 x 7 emergency, OPD 08:00 AM - 08:00 PM",
+        "emergency_available": True,
+        "specialties": COMMON_SPECIALTIES,
+        "disease_categories": COMMON_DISEASE_CATEGORIES,
+        "description": "Full-service CarePlus network hospital with broad specialty OPD, diagnostics and appointment booking.",
+        "consultation_fee": fee,
+        "distance_km": distance,
+        "image_url": image_url,
+        "doctors": doctors,
+    }
+
+
+NETWORK_DOCTORS = [
+    {"id": "doc-general-kapoor", "name": "Dr. Aditi Kapoor", "department": "General Medicine", "specialty": "General Physician", "experience_years": 13},
+    {"id": "doc-cardio-bose", "name": "Dr. Rohan Bose", "department": "Cardiology", "specialty": "Cardiologist", "experience_years": 15},
+    {"id": "doc-neuro-naik", "name": "Dr. Meera Naik", "department": "Neurology", "specialty": "Neurologist", "experience_years": 12},
+    {"id": "doc-derma-roy", "name": "Dr. Sneha Roy", "department": "Dermatology", "specialty": "Dermatologist", "experience_years": 9},
+    {"id": "doc-ortho-suri", "name": "Dr. Harsh Suri", "department": "Orthopedics", "specialty": "Orthopedic", "experience_years": 14},
+    {"id": "doc-pulmo-jain", "name": "Dr. Nikhil Jain", "department": "Pulmonology", "specialty": "Pulmonologist", "experience_years": 11},
+    {"id": "doc-gastro-reddy", "name": "Dr. Sahana Reddy", "department": "Gastroenterology", "specialty": "Gastroenterologist", "experience_years": 10},
+    {"id": "doc-pedia-kulkarni", "name": "Dr. Dev Kulkarni", "department": "Pediatrics", "specialty": "Pediatrician", "experience_years": 16},
+    {"id": "doc-gyn-sharma", "name": "Dr. Pooja Sharma", "department": "Gynecology", "specialty": "Gynecologist", "experience_years": 13},
+    {"id": "doc-psych-thomas", "name": "Dr. Aaron Thomas", "department": "Psychiatry", "specialty": "Psychiatrist", "experience_years": 8},
+]
+
+HOSPITALS.extend(
+    [
+        _network_hospital("careplus-pune", "CarePlus Lifeline Pune", "Pune", "Maharashtra", "Baner Road, Pune", "+91-20-4100-2233", 4.6, 950, 4.2, "https://images.unsplash.com/photo-1551190822-a9333d879b1f?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-ahmedabad", "CarePlus Sterling Ahmedabad", "Ahmedabad", "Gujarat", "SG Highway, Ahmedabad", "+91-79-4001-2200", 4.5, 900, 5.4, "https://images.unsplash.com/photo-1504439468489-c8920d796a29?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-jaipur", "CarePlus Royal Jaipur", "Jaipur", "Rajasthan", "Malviya Nagar, Jaipur", "+91-141-410-8899", 4.4, 850, 6.8, "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-kochi", "CarePlus Coastal Kochi", "Kochi", "Kerala", "MG Road, Kochi", "+91-484-410-7788", 4.7, 980, 3.9, "https://images.unsplash.com/photo-1587351021759-3e566b6af7cc?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-lucknow", "CarePlus Awadh Lucknow", "Lucknow", "Uttar Pradesh", "Gomti Nagar, Lucknow", "+91-522-410-6677", 4.3, 780, 7.1, "https://images.unsplash.com/photo-1586773860418-d37222d8fce3?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-kolkata", "CarePlus Eastern Kolkata", "Kolkata", "West Bengal", "Salt Lake Sector V, Kolkata", "+91-33-4100-5566", 4.6, 920, 5.9, "https://images.unsplash.com/photo-1538108149393-fbbd81895907?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-indore", "CarePlus Central Indore", "Indore", "Madhya Pradesh", "Vijay Nagar, Indore", "+91-731-410-4455", 4.4, 800, 6.1, "https://images.unsplash.com/photo-1512678080530-7760d81faba6?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-chandigarh", "CarePlus Tricity Chandigarh", "Chandigarh", "Chandigarh", "Sector 44, Chandigarh", "+91-172-410-3344", 4.5, 880, 4.7, "https://images.unsplash.com/photo-1579684385127-1ef15d508118?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-bhopal", "CarePlus Lakecity Bhopal", "Bhopal", "Madhya Pradesh", "Arera Colony, Bhopal", "+91-755-410-2233", 4.2, 760, 8.3, "https://images.unsplash.com/photo-1584515933487-779824d29309?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+        _network_hospital("careplus-nagpur", "CarePlus Orange City Nagpur", "Nagpur", "Maharashtra", "Dharampeth, Nagpur", "+91-712-410-1122", 4.5, 820, 5.2, "https://images.unsplash.com/photo-1584982751601-97dcc096659c?auto=format&fit=crop&w=900&q=80", NETWORK_DOCTORS),
+    ]
+)

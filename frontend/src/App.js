@@ -48,7 +48,7 @@ function App() {
             path="/login"
             element={
               isAuthenticated ? (
-                <Navigate replace to="/symptom-checker" />
+                <Navigate replace to="/" />
               ) : (
                 <Login onLoginSuccess={handleLoginSuccess} />
               )
@@ -56,7 +56,7 @@ function App() {
           />
           <Route
             path="/register"
-            element={isAuthenticated ? <Navigate replace to="/symptom-checker" /> : <Register />}
+            element={isAuthenticated ? <Navigate replace to="/" /> : <Register onRegisterSuccess={handleLoginSuccess} />}
           />
           <Route
             path="/dashboard"

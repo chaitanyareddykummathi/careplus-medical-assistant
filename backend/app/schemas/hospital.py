@@ -23,6 +23,7 @@ class HospitalResponse(BaseModel):
     opening_hours: str
     emergency_available: bool
     specialties: list[str]
+    disease_categories: list[str] = Field(default_factory=list)
     description: str
     consultation_fee: int
     distance_km: float

@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy.orm import Session
 
@@ -10,6 +10,28 @@ from app.services.hospital_service import hospital_service
 
 
 class AppointmentService:
+    @staticmethod
+    def _ensure_future_slot(appointment_date: date, time_slot: str) -> None:
+        if appointment_date < date.today():
+            raise AppException(
+                422,
+                "PAST_APPOINTMENT_TIME",
+                "You can't book this appointment because the selected date and time have already passed.",
+            )
+
+        if appointment_date == date.today():
+            try:
+                selected_time = datetime.strptime(time_slot.strip(), "%I:%M %p").time()
+            except ValueError:
+                return
+
+            if selected_time <= datetime.now().time():
+                raise AppException(
+                    422,
+                    "PAST_APPOINTMENT_TIME",
+                    "You can't book this appointment because the selected date and time have already passed.",
+                )
+
     def list_user_appointments(self, db: Session, current_user: User) -> list[Appointment]:
         return (
             db.query(Appointment)
@@ -19,8 +41,7 @@ class AppointmentService:
         )
 
     def book(self, db: Session, current_user: User, payload: AppointmentCreate) -> Appointment:
-        if payload.appointment_date < date.today():
-            raise AppException(422, "PAST_APPOINTMENT_DATE", "Appointment date cannot be in the past.")
+        self._ensure_future_slot(payload.appointment_date, payload.time_slot)
 
         hospital = hospital_service.get_hospital(payload.hospital_id)
         if not hospital:
@@ -67,8 +88,7 @@ class AppointmentService:
         appointment_id: int,
         payload: AppointmentReschedule,
     ) -> Appointment:
-        if payload.appointment_date < date.today():
-            raise AppException(422, "PAST_APPOINTMENT_DATE", "Appointment date cannot be in the past.")
+        self._ensure_future_slot(payload.appointment_date, payload.time_slot)
 
         appointment = self._get_owned(db, current_user, appointment_id)
         if appointment.status == "cancelled":

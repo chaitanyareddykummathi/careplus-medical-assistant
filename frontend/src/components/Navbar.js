@@ -1,77 +1,142 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-
+import { FiHome, FiActivity, FiSearch, FiCalendar, FiBookOpen, FiUser, FiLogOut, FiMenu, FiX } from 'react-icons/fi';
 import styles from './Navbar.module.css';
 
 function Navbar({ isAuthenticated, onLogout }) {
+  const [scrolled, setScrolled] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const toggleMenu = () => setMenuOpen(!menuOpen);
+  const closeMenu = () => setMenuOpen(false);
+
   return (
-    <header className={styles.header}>
+    <header className={`${styles.header} ${scrolled ? styles.scrolled : ''}`}>
       <div className="container">
         <div className={styles.navbar}>
-          <Link className={styles.brand} to="/">
+          {/* Logo */}
+          <Link className={styles.brand} to="/" onClick={closeMenu}>
             <span className={styles.brandMark}>+</span>
-            CarePlus
+            <span className={styles.brandText}>CarePlus</span>
           </Link>
 
-          <nav className={styles.links}>
-            <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/">
-              Home
+          {/* Hamburger Menu Icon */}
+          <button className={styles.menuToggle} onClick={toggleMenu} aria-label="Toggle Navigation menu">
+            {menuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+          </button>
+
+          {/* Links */}
+          <nav className={`${styles.links} ${menuOpen ? styles.open : ''}`}>
+            <NavLink
+              className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
+              to="/"
+              onClick={closeMenu}
+            >
+              <FiHome className={styles.navIcon} />
+              <span>Home</span>
             </NavLink>
 
             {isAuthenticated ? (
               <>
                 <NavLink
-                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
+                  to="/dashboard"
+                  onClick={closeMenu}
+                >
+                  <FiActivity className={styles.navIcon} />
+                  <span>Dashboard</span>
+                </NavLink>
+                <NavLink
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
                   to="/symptom-checker"
+                  onClick={closeMenu}
                 >
-                  Symptom Checker
+                  <FiActivity className={styles.navIcon} style={{ color: 'var(--cp-accent)' }} />
+                  <span>Symptom Checker</span>
                 </NavLink>
                 <NavLink
-                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
                   to="/hospitals"
+                  onClick={closeMenu}
                 >
-                  Hospitals
+                  <FiSearch className={styles.navIcon} />
+                  <span>Hospitals</span>
                 </NavLink>
                 <NavLink
-                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
                   to="/appointments"
+                  onClick={closeMenu}
                 >
-                  Appointments
+                  <FiCalendar className={styles.navIcon} />
+                  <span>Appointments</span>
                 </NavLink>
-                <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/about">
-                  About
+                <NavLink
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
+                  to="/about"
+                  onClick={closeMenu}
+                >
+                  <FiBookOpen className={styles.navIcon} />
+                  <span>About</span>
                 </NavLink>
-                <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/profile">
-                  Profile
+                <NavLink
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
+                  to="/profile"
+                  onClick={closeMenu}
+                >
+                  <div className={styles.avatarWrapper}>
+                    <FiUser size={16} />
+                  </div>
+                  <span>Profile</span>
                 </NavLink>
-                <button className={styles.logoutButton} onClick={onLogout} type="button">
-                  Logout
+                <button className={styles.logoutButton} onClick={() => { onLogout(); closeMenu(); }} type="button">
+                  <FiLogOut size={16} />
+                  <span>Logout</span>
                 </button>
               </>
             ) : (
               <>
                 <NavLink
-                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
                   to="/hospitals"
+                  onClick={closeMenu}
                 >
-                  Hospitals
-                </NavLink>
-                <NavLink className={({ isActive }) => (isActive ? styles.activeLink : styles.link)} to="/about">
-                  About
+                  <FiSearch className={styles.navIcon} />
+                  <span>Hospitals</span>
                 </NavLink>
                 <NavLink
-                  className={({ isActive }) => (isActive ? styles.activeLink : styles.link)}
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
+                  to="/about"
+                  onClick={closeMenu}
+                >
+                  <FiBookOpen className={styles.navIcon} />
+                  <span>About</span>
+                </NavLink>
+                <NavLink
+                  className={({ isActive }) => (isActive ? `${styles.link} ${styles.activeLink}` : styles.link)}
                   to="/login"
+                  onClick={closeMenu}
                 >
-                  Login
+                  <span>Login</span>
                 </NavLink>
                 <NavLink
-                  className={({ isActive }) =>
-                    isActive ? `${styles.authButton} ${styles.authButtonActive}` : styles.authButton
-                  }
+                  className={({ isActive }) => `${styles.authButton} ${isActive ? styles.authButtonActive : ''}`}
                   to="/register"
+                  onClick={closeMenu}
                 >
-                  Register
+                  <span>Register</span>
                 </NavLink>
               </>
             )}

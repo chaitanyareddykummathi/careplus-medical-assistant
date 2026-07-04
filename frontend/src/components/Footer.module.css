@@ -1,13 +1,108 @@
 .footer {
-  background: var(--cp-surface);
-  border-top: 1px solid var(--cp-border);
-  margin-top: 2rem;
-  padding: 1rem 0;
+  background-color: #0f172a; /* Slate 900 */
+  color: #94a3b8; /* Slate 400 */
+  padding: 4rem 0 2rem;
+  border-top: 1px solid #1e293b;
+  font-family: var(--font-body);
 }
 
-.text {
-  color: var(--cp-text-secondary);
-  font-size: 0.85rem;
-  margin: 0;
-  text-align: center;
+.grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+}
+
+@media (max-width: 768px) {
+  .grid {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
+}
+
+.brandCol {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--cp-primary);
+  letter-spacing: -0.03em;
+}
+
+.brandMark {
+  width: 32px;
+  height: 32px;
+  background: linear-gradient(135deg, var(--cp-primary), var(--cp-secondary));
+  color: var(--cp-white);
+  border-radius: var(--radius-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.3rem;
+  font-weight: 700;
+}
+
+.brandText {
+  color: var(--cp-white);
+}
+
+.brandDesc {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  max-width: 440px;
+}
+
+.colTitle {
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--cp-white);
+  margin-bottom: 1.25rem;
+}
+
+.list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+}
+
+.list a {
+  color: #94a3b8;
+  transition: color 0.2s;
+}
+
+.list a:hover {
+  color: var(--cp-primary);
+}
+
+.bottomBand {
+  border-top: 1px solid #1e293b;
+  padding-top: 2rem;
+}
+
+.disclaimer {
+  font-size: 0.75rem;
+  line-height: 1.6;
+  color: #64748b; /* Slate 500 */
+  margin-bottom: 1.5rem;
+}
+
+.copyRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
