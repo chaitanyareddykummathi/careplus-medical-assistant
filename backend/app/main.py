@@ -25,8 +25,11 @@ app.add_middleware(
     allow_headers=['*'],
 )
 
+from app.api.routes.chat import router as chat_router
+
 register_exception_handlers(app)
 app.include_router(api_router, prefix=settings.api_v1_prefix)
+app.include_router(chat_router, prefix="/api")
 
 
 @app.middleware('http')

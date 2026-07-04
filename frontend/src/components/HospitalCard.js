@@ -107,16 +107,10 @@ function HospitalCard({ hospital }) {
             paddingTop: '1rem',
             display: 'flex',
             alignItems: 'center',
-            justifyContent: 'space-between',
+            justifyContent: 'flex-end',
             marginTop: 'auto',
           }}
         >
-          <div>
-            <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', display: 'block' }}>Consultation Fee</span>
-            <span style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--cp-text)', fontFamily: 'var(--font-display)' }}>
-              ₹{hospital.consultation_fee}
-            </span>
-          </div>
           <Link
             className="btn btn-primary"
             to="/appointments"

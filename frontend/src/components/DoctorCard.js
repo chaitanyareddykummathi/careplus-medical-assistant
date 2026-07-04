@@ -95,14 +95,7 @@ function DoctorCard({ doctor, onBook, hospitalName, consultationFee }) {
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid var(--cp-border)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
-          <div>
-            {consultationFee && (
-              <span style={{ fontSize: '0.9rem', fontWeight: '700', color: 'var(--cp-text)' }}>
-                Fee: ₹{consultationFee}
-              </span>
-            )}
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--cp-border)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
           {onBook && (
             <button
               className="btn btn-primary"

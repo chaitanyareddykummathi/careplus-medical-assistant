@@ -37,11 +37,14 @@ class AppointmentResponse(BaseModel):
     doctor_name: str
     appointment_date: date
     time_slot: str
+    appointment_time: str | None = None
     patient_name: str
     reason: str | None = None
     status: str
     created_at: datetime
     updated_at: datetime
+    completed_at: datetime | None = None
+    cancelled_at: datetime | None = None
 
 
 class AppointmentEnvelope(BaseModel):

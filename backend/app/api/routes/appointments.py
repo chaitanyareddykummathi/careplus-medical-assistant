@@ -43,6 +43,14 @@ def cancel_appointment(
     return AppointmentEnvelope(message="Appointment cancelled successfully.", data=appointment)
 
 
+from datetime import date
+from pydantic import BaseModel
+from app.models.appointment import Appointment
+
+class BookedSlotsResponse(BaseModel):
+    booked_slots: list[str]
+
+
 @router.patch("/{appointment_id}/reschedule", response_model=AppointmentEnvelope)
 def reschedule_appointment(
     appointment_id: int,
@@ -52,3 +60,23 @@ def reschedule_appointment(
 ) -> AppointmentEnvelope:
     appointment = appointment_service.reschedule(db, current_user, appointment_id, payload)
     return AppointmentEnvelope(message="Appointment rescheduled successfully.", data=appointment)
+
+
+@router.get("/booked-slots", response_model=BookedSlotsResponse)
+def get_booked_slots(
+    doctor_id: str,
+    appointment_date: date,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_roles("patient", "clinician", "admin")),
+) -> BookedSlotsResponse:
+    appointments = (
+        db.query(Appointment)
+        .filter(
+            Appointment.doctor_id == doctor_id,
+            Appointment.appointment_date == appointment_date,
+            Appointment.status != "cancelled"
+        )
+        .all()
+    )
+    booked_slots = [apt.time_slot for apt in appointments]
+    return BookedSlotsResponse(booked_slots=booked_slots)

@@ -13,7 +13,7 @@ import {
   FiUser
 } from 'react-icons/fi';
 
-import { analyzeSymptoms, getApiErrorMessage } from '../services/api';
+import { sendChatMessage, getApiErrorMessage } from '../services/api';
 import Badge from '../components/Badge';
 import { Spinner } from '../components/Loader';
 import styles from './CarePages.module.css';
@@ -146,12 +146,21 @@ function SymptomChecker() {
     // 1. Add User message
     const userMsgId = 'user-' + Date.now();
     setMessages((prev) => [...prev, { id: userMsgId, sender: 'user', type: 'text', content: cleanText }]);
+    
+    // Build history from messages state
+    const history = messages
+      .filter((msg) => msg.id !== 'welcome')
+      .map((msg) => ({
+        role: msg.sender === 'user' ? 'user' : 'model',
+        content: msg.type === 'text' ? msg.content : (msg.content.reply || JSON.stringify(msg.content)),
+      }));
+
     setText('');
     setIsAnalyzing(true);
 
     try {
       // 2. Call backend api
-      const result = await analyzeSymptoms({ text: cleanText });
+      const result = await sendChatMessage({ message: cleanText, history });
       
       // 3. Save to localstorage
       localStorage.setItem(
@@ -374,6 +383,64 @@ function SymptomChecker() {
                     icon={FiInfo}
                     color="var(--cp-accent)"
                   />
+
+                  {/* Matching/Recommended Doctors */}
+                  {activeAnalysisResult.nearby_specialists && activeAnalysisResult.nearby_specialists.length > 0 && (
+                    <div style={{ marginTop: '1.2rem', borderTop: '1px solid var(--cp-border)', paddingTop: '1rem' }}>
+                      <h4 style={{ fontSize: '0.9rem', fontWeight: 700, margin: '0 0 0.6rem 0', color: 'var(--cp-primary)', display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                        <FiUser size={14} />
+                        <span>Recommended Doctors ({activeAnalysisResult.recommended_specialist})</span>
+                      </h4>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                        {activeAnalysisResult.nearby_specialists.map((doc, idx) => (
+                          <div
+                            key={idx}
+                            style={{
+                              background: 'var(--cp-bg)',
+                              border: '1px solid var(--cp-border)',
+                              borderRadius: 'var(--radius-md)',
+                              padding: '0.75rem',
+                              fontSize: '0.825rem',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.35rem',
+                            }}
+                          >
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                              <strong style={{ color: 'var(--cp-text)' }}>{doc.name}</strong>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', fontWeight: 500 }}>
+                                {doc.experience_years} yrs exp
+                              </span>
+                            </div>
+                            <div style={{ color: 'var(--cp-subtext)', fontSize: '0.75rem' }}>
+                              {doc.specialty} · {doc.hospital}
+                            </div>
+                            <Link
+                              className="btn btn-primary"
+                              to="/appointments"
+                              state={{
+                                hospitalId: doc.hospital_id,
+                                department: doc.department,
+                                doctorId: doc.doctor_id,
+                              }}
+                              style={{
+                                alignSelf: 'flex-start',
+                                padding: '0.3rem 0.6rem',
+                                fontSize: '0.75rem',
+                                marginTop: '0.25rem',
+                                borderRadius: 'var(--radius-sm)',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '0.25rem',
+                              }}
+                            >
+                              <FiCalendar size={12} /> Book Appointment
+                            </Link>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Direct action links */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid var(--cp-border)' }}>

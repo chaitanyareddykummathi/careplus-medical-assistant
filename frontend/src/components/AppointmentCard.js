@@ -4,7 +4,7 @@ import { FiCalendar, FiClock, FiMapPin, FiUser, FiActivity } from 'react-icons/f
 import Badge from './Badge';
 
 function AppointmentCard({ appointment, onCancel, onReschedule }) {
-  const isUpcoming = appointment.status !== 'cancelled';
+  const isUpcoming = appointment.status === 'upcoming' || appointment.status === 'rescheduled';
 
   return (
     <motion.article

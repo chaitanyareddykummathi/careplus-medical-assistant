@@ -22,6 +22,7 @@ import {
   getAppointments,
   getHospitals,
   rescheduleAppointment,
+  getBookedSlots,
 } from '../services/api';
 import AppointmentCard from '../components/AppointmentCard';
 import Badge from '../components/Badge';
@@ -87,8 +88,8 @@ function Appointments({ user }) {
   const [appointments, setAppointments] = useState([]);
   const [form, setForm] = useState({
     hospital_id: location.state?.hospitalId || '',
-    department: '',
-    doctor_id: '',
+    department: location.state?.department || '',
+    doctor_id: location.state?.doctorId || '',
     appointment_date: '',
     time_slot: timeSlots[0],
     disease_category: '',
@@ -100,11 +101,59 @@ function Appointments({ user }) {
   const [consultationType, setConsultationType] = useState('offline'); // online vs offline
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [lastBookedDetails, setLastBookedDetails] = useState(null);
+  const [bookedSlots, setBookedSlots] = useState([]);
 
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+
+  // Fetch booked slots when doctor or date changes
+  useEffect(() => {
+    let isMounted = true;
+    async function loadBookedSlots() {
+      if (!form.doctor_id || !form.appointment_date) {
+        setBookedSlots([]);
+        return;
+      }
+      try {
+        const slots = await getBookedSlots(form.doctor_id, form.appointment_date);
+        if (isMounted) {
+          setBookedSlots(slots);
+        }
+      } catch (err) {
+        console.error('Failed to load booked slots:', err);
+      }
+    }
+    loadBookedSlots();
+    return () => {
+      isMounted = false;
+    };
+  }, [form.doctor_id, form.appointment_date]);
+
+  // Auto-select first available slot
+  useEffect(() => {
+    const availableSlot = timeSlots.find(slot => {
+      const isPast = isPastAppointment(form.appointment_date, slot);
+      const isBooked = bookedSlots.includes(slot);
+      return !isPast && !isBooked;
+    });
+    if (availableSlot && availableSlot !== form.time_slot) {
+      setForm(prev => ({ ...prev, time_slot: availableSlot }));
+    }
+  }, [form.appointment_date, bookedSlots]);
+
+  const getSlotLabelAndDisabled = (slot) => {
+    const isPast = isPastAppointment(form.appointment_date, slot);
+    if (isPast) {
+      return { label: `${slot} (Unavailable - Passed)`, disabled: true };
+    }
+    const isBooked = bookedSlots.includes(slot);
+    if (isBooked) {
+      return { label: `${slot} (Fully Booked)`, disabled: true };
+    }
+    return { label: `${slot} (Available)`, disabled: false };
+  };
 
   useEffect(() => {
     async function load() {
@@ -148,6 +197,29 @@ function Appointments({ user }) {
     return doctorOptions.find((doctor) => doctor.id === form.doctor_id) || doctorOptions[0];
   }, [doctorOptions, form.doctor_id]);
 
+  const categorizedAppointments = useMemo(() => {
+    return appointments.map((apt) => {
+      const isPast = isPastAppointment(apt.appointment_date, apt.time_slot);
+      let status = apt.status;
+      if (isPast && (status === 'upcoming' || status === 'rescheduled')) {
+        status = 'completed';
+      }
+      return { ...apt, status };
+    });
+  }, [appointments]);
+
+  const upcomingAppointments = useMemo(() => {
+    return categorizedAppointments.filter((apt) => apt.status === 'upcoming' || apt.status === 'rescheduled');
+  }, [categorizedAppointments]);
+
+  const completedAppointments = useMemo(() => {
+    return categorizedAppointments.filter((apt) => apt.status === 'completed');
+  }, [categorizedAppointments]);
+
+  const cancelledAppointments = useMemo(() => {
+    return categorizedAppointments.filter((apt) => apt.status === 'cancelled');
+  }, [categorizedAppointments]);
+
   useEffect(() => {
     if (!selectedHospital) return;
     setForm((prev) => ({
@@ -188,8 +260,10 @@ function Appointments({ user }) {
       return;
     }
 
-    if (isPastAppointment(form.appointment_date, form.time_slot)) {
-      setError(pastAppointmentMessage);
+    const { label, disabled } = getSlotLabelAndDisabled(form.time_slot);
+    if (disabled) {
+      const isPast = isPastAppointment(form.appointment_date, form.time_slot);
+      setError(isPast ? 'This time slot has already passed.' : 'This slot is fully booked.');
       return;
     }
 
@@ -343,13 +417,9 @@ function Appointments({ user }) {
               {/* Doctor Details Summary Alert */}
               {selectedHospital && (
                 <div style={{ background: 'var(--cp-bg)', border: '1px solid var(--cp-border)', borderRadius: 'var(--radius-md)', padding: '1rem', fontSize: '0.85rem' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--cp-subtext)' }}>Clinic Location:</span>
                     <strong>{selectedHospital.address}, {selectedHospital.city}</strong>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--cp-subtext)' }}>OPD Base Fee:</span>
-                    <strong>₹{selectedHospital.consultation_fee}</strong>
                   </div>
                 </div>
               )}
@@ -413,11 +483,14 @@ function Appointments({ user }) {
                 <label className={styles.label}>
                   Preferred Time Slot
                   <select className={styles.select} name="time_slot" onChange={handleChange} value={form.time_slot}>
-                    {timeSlots.map((slot) => (
-                      <option key={slot} value={slot}>
-                        {slot}
-                      </option>
-                    ))}
+                    {timeSlots.map((slot) => {
+                      const { label, disabled } = getSlotLabelAndDisabled(slot);
+                      return (
+                        <option key={slot} value={slot} disabled={disabled}>
+                          {label}
+                        </option>
+                      );
+                    })}
                   </select>
                 </label>
               </div>
@@ -443,29 +516,69 @@ function Appointments({ user }) {
               </button>
             </form>
 
-            {/* Upcoming Appointments List Column */}
-            <div className={styles.card} style={{ alignSelf: 'start' }}>
-              <h3 className={styles.cardTitle} style={{ borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.8rem' }}>
-                Upcoming Consultations ({appointments.filter(a => a.status !== 'cancelled').length})
-              </h3>
-              
-              {appointments.length === 0 ? (
-                <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--cp-subtext)' }}>
-                  <FiCalendar size={40} style={{ opacity: 0.15, marginBottom: '0.75rem' }} />
-                  <p style={{ margin: 0, fontSize: '0.9rem' }}>No consultation bookings found.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', marginTop: '0.5rem', maxHeight: '550px', overflowY: 'auto', paddingRight: '0.25rem' }}>
-                  {appointments.map((appointment) => (
-                    <AppointmentCard
-                      key={appointment.id}
-                      appointment={appointment}
-                      onCancel={() => handleCancel(appointment.id)}
-                      onReschedule={() => handleQuickReschedule(appointment)}
-                    />
-                  ))}
-                </div>
-              )}
+            {/* Appointments List Column */}
+            <div className={styles.card} style={{ alignSelf: 'start', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+              {/* Upcoming Section */}
+              <div>
+                <h3 className={styles.cardTitle} style={{ borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.8rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Upcoming Consultations</span>
+                  <Badge variant="success">{upcomingAppointments.length}</Badge>
+                </h3>
+                {upcomingAppointments.length === 0 ? (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--cp-subtext)', margin: '0.5rem 0', textAlign: 'center', padding: '1rem 0' }}>No upcoming appointments scheduled.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                    {upcomingAppointments.map((appointment) => (
+                      <AppointmentCard
+                        key={appointment.id}
+                        appointment={appointment}
+                        onCancel={() => handleCancel(appointment.id)}
+                        onReschedule={() => handleQuickReschedule(appointment)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Completed Section */}
+              <div>
+                <h3 className={styles.cardTitle} style={{ borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.8rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Completed History</span>
+                  <Badge variant="teal">{completedAppointments.length}</Badge>
+                </h3>
+                {completedAppointments.length === 0 ? (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--cp-subtext)', margin: '0.5rem 0', textAlign: 'center', padding: '1rem 0' }}>No completed appointments in history.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                    {completedAppointments.map((appointment) => (
+                      <AppointmentCard
+                        key={appointment.id}
+                        appointment={appointment}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Cancelled Section */}
+              <div>
+                <h3 className={styles.cardTitle} style={{ borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.8rem', marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Cancelled Log</span>
+                  <Badge variant="danger">{cancelledAppointments.length}</Badge>
+                </h3>
+                {cancelledAppointments.length === 0 ? (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--cp-subtext)', margin: '0.5rem 0', textAlign: 'center', padding: '1rem 0' }}>No cancelled appointments.</p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', maxHeight: '300px', overflowY: 'auto', paddingRight: '0.25rem' }}>
+                    {cancelledAppointments.map((appointment) => (
+                      <AppointmentCard
+                        key={appointment.id}
+                        appointment={appointment}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         )}

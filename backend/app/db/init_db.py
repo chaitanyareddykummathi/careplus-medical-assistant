@@ -21,6 +21,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     _ensure_user_auth_columns()
+    _ensure_appointment_columns()
 
     if engine.dialect.name == 'postgresql':
         try:
@@ -106,6 +107,31 @@ def _ensure_user_auth_columns() -> None:
         connection.execute(text('CREATE INDEX IF NOT EXISTS ix_users_is_google_user ON users (is_google_user)'))
         connection.execute(text('CREATE INDEX IF NOT EXISTS ix_users_role ON users (role)'))
         connection.execute(text('CREATE INDEX IF NOT EXISTS ix_users_is_active ON users (is_active)'))
+
+
+def _ensure_appointment_columns() -> None:
+    inspector = inspect(engine)
+    if 'appointments' not in inspector.get_table_names():
+        return
+
+    existing_columns = {column['name'] for column in inspector.get_columns('appointments')}
+    alter_statements: list[str] = []
+    is_postgres = engine.dialect.name == 'postgresql'
+    ts_type = 'TIMESTAMPTZ' if is_postgres else 'DATETIME'
+
+    if 'appointment_time' not in existing_columns:
+        alter_statements.append('ALTER TABLE appointments ADD COLUMN appointment_time VARCHAR(32)')
+
+    if 'completed_at' not in existing_columns:
+        alter_statements.append(f'ALTER TABLE appointments ADD COLUMN completed_at {ts_type}')
+
+    if 'cancelled_at' not in existing_columns:
+        alter_statements.append(f'ALTER TABLE appointments ADD COLUMN cancelled_at {ts_type}')
+
+    if alter_statements:
+        with engine.begin() as connection:
+            for statement in alter_statements:
+                connection.execute(text(statement))
 
 
 if __name__ == '__main__':

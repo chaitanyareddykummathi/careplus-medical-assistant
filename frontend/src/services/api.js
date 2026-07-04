@@ -206,6 +206,11 @@ export async function analyzeSymptoms(payload) {
   return data;
 }
 
+export async function sendChatMessage(payload) {
+  const { data } = await http.post('/api/chat', payload);
+  return data;
+}
+
 export async function getHospitals(filters = {}) {
   const { data } = await http.get(withApiPrefix('/hospitals'), { params: filters });
   return data?.data || data;
@@ -234,6 +239,13 @@ export async function cancelAppointment(appointmentId) {
 export async function rescheduleAppointment(appointmentId, payload) {
   const { data } = await http.patch(withApiPrefix(`/appointments/${appointmentId}/reschedule`), payload);
   return data?.data || data;
+}
+
+export async function getBookedSlots(doctorId, date) {
+  const { data } = await http.get(withApiPrefix('/appointments/booked-slots'), {
+    params: { doctor_id: doctorId, appointment_date: date }
+  });
+  return data?.booked_slots || [];
 }
 
 export function getApiErrorMessage(error, fallbackMessage = 'Something went wrong.') {
