@@ -47,6 +47,9 @@ class Settings:
     jwt_algorithm: str
     jwt_access_token_exp_minutes: int
     google_oauth_client_id: str | None
+    google_oauth_client_secret: str | None
+    google_oauth_redirect_uri: str | None
+    google_api_key: str | None
     cors_allow_origins: tuple[str, ...]
     redis_url: str | None
     celery_broker_url: str | None
@@ -77,6 +80,35 @@ def get_settings() -> Settings:
         raise RuntimeError('Set DB_URL or DATABASE_URL in environment.')
 
     environment = os.getenv('APP_ENV', 'development')
+    
+    # Audit OAuth and API key environment variables
+    import logging
+    logger = logging.getLogger("app.config")
+    
+    client_id = os.getenv('GOOGLE_OAUTH_CLIENT_ID') or os.getenv('GOOGLE_CLIENT_ID') or os.getenv('REACT_APP_GOOGLE_CLIENT_ID')
+    client_secret = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET') or os.getenv('GOOGLE_CLIENT_SECRET')
+    redirect_uri = os.getenv('GOOGLE_OAUTH_REDIRECT_URI') or os.getenv('GOOGLE_REDIRECT_URI')
+    gemini_key = os.getenv('GOOGLE_API_KEY')
+
+    if not client_id or 'your_client_id' in client_id.lower() or 'placeholder' in client_id.lower():
+        logger.warning("GOOGLE_CLIENT_ID is not configured or is placeholder! Google Login will show invalid_client 401.")
+    else:
+        logger.info(f"GOOGLE_CLIENT_ID is configured: {client_id[:12]}...")
+
+    if not client_secret or 'placeholder' in client_secret.lower() or 'your_client_secret' in client_secret.lower():
+        logger.warning("GOOGLE_CLIENT_SECRET is not configured or is placeholder!")
+    else:
+        logger.info("GOOGLE_CLIENT_SECRET is configured.")
+
+    if not redirect_uri:
+        logger.warning("GOOGLE_REDIRECT_URI is not set. Defaulting to empty/none.")
+    else:
+        logger.info(f"GOOGLE_REDIRECT_URI is set to: {redirect_uri}")
+
+    if not gemini_key or 'placeholder' in gemini_key.lower() or 'your_gemini' in gemini_key.lower():
+        logger.warning("GOOGLE_API_KEY (Gemini API Key) is not configured! Gemini service will run in mock fallback mode.")
+    else:
+        logger.info("GOOGLE_API_KEY is configured.")
     jwt_secret_key = os.getenv('JWT_SECRET_KEY') or os.getenv('JWT_SECRET')
     if not jwt_secret_key and environment.lower() not in {'development', 'dev', 'local', 'test'}:
         raise RuntimeError('Set JWT_SECRET_KEY in environment.')
@@ -97,6 +129,15 @@ def get_settings() -> Settings:
             or os.getenv('GOOGLE_CLIENT_ID')
             or os.getenv('REACT_APP_GOOGLE_CLIENT_ID')
         ),
+        google_oauth_client_secret=(
+            os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')
+            or os.getenv('GOOGLE_CLIENT_SECRET')
+        ),
+        google_oauth_redirect_uri=(
+            os.getenv('GOOGLE_OAUTH_REDIRECT_URI')
+            or os.getenv('GOOGLE_REDIRECT_URI')
+        ),
+        google_api_key=os.getenv('GOOGLE_API_KEY'),
         cors_allow_origins=tuple(
             _as_csv(
                 os.getenv('CORS_ALLOW_ORIGINS'),

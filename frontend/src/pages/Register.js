@@ -1,14 +1,48 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { GoogleLogin } from '@react-oauth/google';
 import { motion } from 'framer-motion';
 import { FiUser, FiMail, FiLock, FiEye, FiEyeOff, FiCheckCircle } from 'react-icons/fi';
 
-import { getApiErrorMessage, loginUser, registerUser } from '../services/api';
+import { getApiErrorMessage, loginUser, registerUser, googleLogin } from '../services/api';
+import { Spinner } from '../components/Loader';
 import styles from './Auth.module.css';
 
 const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
+function getPasswordStrength(password) {
+  let score = 0;
+  if (!password) return score;
+
+  if (password.length >= 8) score += 1;
+  if (/[A-Z]/.test(password)) score += 1;
+  if (/[a-z]/.test(password)) score += 1;
+  if (/[0-9]/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+  return score;
+}
+
+const strengthTextMap = {
+  0: 'Too Short',
+  1: 'Weak',
+  2: 'Fair',
+  3: 'Good',
+  4: 'Strong',
+  5: 'Very Strong',
+};
+
+const strengthColorMap = {
+  0: '#EF4444',
+  1: '#EF4444',
+  2: '#F59E0B',
+  3: '#F59E0B',
+  4: '#10B981',
+  5: '#10B981',
+};
+
 function Register({ onRegisterSuccess }) {
+  const googleEnabled = Boolean(process.env.REACT_APP_GOOGLE_CLIENT_ID);
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '',
@@ -18,8 +52,12 @@ function Register({ onRegisterSuccess }) {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [agreeTerms, setAgreeTerms] = useState(false);
+
+  const strength = getPasswordStrength(form.password);
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -38,6 +76,9 @@ function Register({ onRegisterSuccess }) {
     }
     if (form.password !== form.confirmPassword) {
       return 'Password and confirm password do not match.';
+    }
+    if (!agreeTerms) {
+      return 'You must agree to the Terms & Conditions.';
     }
     return '';
   };
@@ -59,7 +100,7 @@ function Register({ onRegisterSuccess }) {
       email: form.email.trim().toLowerCase(),
       password: form.password,
       confirmPassword: form.confirmPassword,
-      username: form.email.split('@')[0], // Optional username derived from email
+      username: form.email.split('@')[0],
     };
 
     try {
@@ -79,6 +120,31 @@ function Register({ onRegisterSuccess }) {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    const token = credentialResponse?.credential;
+    if (!token) {
+      setError('Google sign-in token was not received. Please try again.');
+      return;
+    }
+
+    setError('');
+    setGoogleLoading(true);
+
+    try {
+      const session = await googleLogin({ token });
+      onRegisterSuccess(session);
+      navigate('/', { replace: true });
+    } catch (apiError) {
+      setError(getApiErrorMessage(apiError, 'Google sign-in failed. Please try again.'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setError('Google registration failed. Please try again.');
   };
 
   return (
@@ -126,8 +192,8 @@ function Register({ onRegisterSuccess }) {
             <p className={styles.subtitle}>Start your AI-assisted triage journey with CarePlus.</p>
           </div>
 
-          {error ? <p className="alert alertError">{error}</p> : null}
-          {success ? <p className="alert alertSuccess">{success}</p> : null}
+          {error ? <p className="alert alertError" role="alert">{error}</p> : null}
+          {success ? <p className="alert alertSuccess" role="alert">{success}</p> : null}
 
           <form className={styles.form} onSubmit={handleSubmit}>
             {/* Name Input */}
@@ -147,6 +213,7 @@ function Register({ onRegisterSuccess }) {
                   required
                   type="text"
                   value={form.name}
+                  disabled={loading || googleLoading}
                 />
               </div>
             </div>
@@ -168,6 +235,7 @@ function Register({ onRegisterSuccess }) {
                   required
                   type="email"
                   value={form.email}
+                  disabled={loading || googleLoading}
                 />
               </div>
             </div>
@@ -190,6 +258,7 @@ function Register({ onRegisterSuccess }) {
                     required
                     type={showPassword ? 'text' : 'password'}
                     value={form.password}
+                    disabled={loading || googleLoading}
                   />
                 </div>
               </div>
@@ -210,12 +279,38 @@ function Register({ onRegisterSuccess }) {
                     required
                     type={showPassword ? 'text' : 'password'}
                     value={form.confirmPassword}
+                    disabled={loading || googleLoading}
                   />
                 </div>
               </div>
             </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1.25rem' }}>
+            {/* Password Strength meter */}
+            {form.password && (
+              <div style={{ marginTop: '-0.5rem', marginBottom: '0.25rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', color: 'var(--cp-subtext)', fontWeight: 600, marginBottom: '0.25rem' }}>
+                  <span>Strength:</span>
+                  <span style={{ color: strengthColorMap[strength] }}>
+                    {strengthTextMap[strength]}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', gap: '0.2rem', height: '4px' }}>
+                  {[1, 2, 3, 4, 5].map((level) => (
+                    <div
+                      key={level}
+                      style={{
+                        flex: 1,
+                        backgroundColor: level <= strength ? strengthColorMap[strength] : 'var(--cp-border)',
+                        borderRadius: '2px',
+                        transition: 'all 0.3s'
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.5rem' }}>
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
@@ -236,10 +331,47 @@ function Register({ onRegisterSuccess }) {
               </button>
             </div>
 
-            <button className={styles.submitButton} disabled={loading} type="submit">
-              {loading ? 'Creating account...' : 'Create Account'}
+            {/* Terms & Conditions Checkbox */}
+            <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', margin: '0.2rem 0' }}>
+              <input
+                type="checkbox"
+                id="agreeTerms"
+                checked={agreeTerms}
+                onChange={(e) => setAgreeTerms(e.target.checked)}
+                style={{ cursor: 'pointer', marginTop: '0.2rem', width: '15px', height: '15px' }}
+                disabled={loading || googleLoading}
+              />
+              <label htmlFor="agreeTerms" style={{ fontSize: '0.825rem', color: 'var(--cp-text)', fontWeight: 600, cursor: 'pointer', userSelect: 'none', lineHeight: '1.4' }}>
+                I agree to the <span style={{ color: 'var(--cp-primary)', textDecoration: 'underline' }}>Terms & Conditions</span> and <span style={{ color: 'var(--cp-primary)', textDecoration: 'underline' }}>Privacy Policy</span>.
+              </label>
+            </div>
+
+            <button className={styles.submitButton} disabled={loading || googleLoading} type="submit" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem' }}>
+              {loading ? (
+                <>
+                  <Spinner size="1.2rem" color="#ffffff" />
+                  <span>Creating account...</span>
+                </>
+              ) : (
+                'Create Account'
+              )}
             </button>
           </form>
+
+          {googleEnabled ? (
+            <div className={styles.googleDivider}>
+              <div className={styles.dividerLine} />
+              <span className={styles.dividerText}>or register with</span>
+              <div className={styles.dividerLine} />
+            </div>
+          ) : null}
+
+          {googleEnabled ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '1rem', gap: '0.5rem' }}>
+              <GoogleLogin onError={handleGoogleError} onSuccess={handleGoogleSuccess} />
+              {googleLoading ? <p className={styles.helperText}>Registering with Google...</p> : null}
+            </div>
+          ) : null}
 
           <p className={styles.helperText} style={{ marginTop: '1.5rem', textAlign: 'center' }}>
             Already have an account? <Link to="/login" style={{ color: 'var(--cp-primary)', fontWeight: 700 }}>Sign in</Link>

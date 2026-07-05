@@ -36,6 +36,7 @@ You MUST respond ONLY with a JSON object containing the following keys:
   "recommended_specialist": "Cardiologist", "General Physician", "Dermatologist", "Orthopedic", "Neurologist", "Pediatrician", "Gynecologist", "Psychiatrist", or null (if no doctor is needed),
   "recommended_department": "Cardiology", "General Medicine", "Dermatology", "Orthopedics", "Neurology", "Pediatrics", "Gynecology", "Psychiatry", or null (if no doctor is needed),
   "should_see_doctor": true or false (true if risk_level is MEDIUM or HIGH, or doctor is recommended),
+  "suggested_followup_questions": ["2-3 short, relevant follow-up questions the user might ask next about their symptoms or recommendations"],
   "medical_disclaimer": "Standard medical disclaimer."
 }
 Do not include any markdown formatting like ```json or comments outside the JSON. Return only the raw JSON object.
@@ -43,7 +44,7 @@ Do not include any markdown formatting like ```json or comments outside the JSON
 
 class GeminiService:
     def __init__(self) -> None:
-        self.api_key = os.getenv("GOOGLE_API_KEY")
+        self.api_key = settings.google_api_key or os.getenv("GOOGLE_API_KEY")
         self.model_name = "gemini-1.5-flash"
         self._configured = False
         self._init_client()
@@ -79,6 +80,7 @@ class GeminiService:
                 "recommended_specialist": "Cardiologist",
                 "recommended_department": "Cardiology",
                 "should_see_doctor": True,
+                "suggested_followup_questions": ["What tests will the cardiologist run?", "How is cardiac angina treated?", "What are emergency signs of a heart attack?"],
                 "medical_disclaimer": "This is general medical guidance, not a diagnosis. Please consult a doctor immediately."
             }
         elif "fever" in msg_lower or "cough" in msg_lower or "throat" in msg_lower or "temperature" in msg_lower:
@@ -96,6 +98,7 @@ class GeminiService:
                 "recommended_specialist": "General Physician",
                 "recommended_department": "General Medicine",
                 "should_see_doctor": True,
+                "suggested_followup_questions": ["When should I take fever reducers?", "Is acute bronchitis contagious?", "How much water should I drink?"],
                 "medical_disclaimer": "This is general medical guidance, not a diagnosis. Please consult a doctor."
             }
         else:
@@ -113,6 +116,7 @@ class GeminiService:
                 "recommended_specialist": "General Physician",
                 "recommended_department": "General Medicine",
                 "should_see_doctor": False,
+                "suggested_followup_questions": ["How can I check my heart rate?", "What are signs of low blood pressure?", "Can you explain the triage risk levels?"],
                 "medical_disclaimer": "This is general medical guidance, not a diagnosis."
             }
 
@@ -127,7 +131,7 @@ class GeminiService:
         """
         if not self._configured:
             # Try to configure again in case env was updated
-            self.api_key = os.getenv("GOOGLE_API_KEY")
+            self.api_key = settings.google_api_key or os.getenv("GOOGLE_API_KEY")
             self._init_client()
             
         if not self._configured:

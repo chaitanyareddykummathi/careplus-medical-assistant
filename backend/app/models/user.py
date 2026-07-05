@@ -1,4 +1,4 @@
-from sqlalchemy import Boolean, Column, Integer, String
+from sqlalchemy import Boolean, Column, Integer, String, DateTime
 from sqlalchemy.orm import relationship
 
 from app.db.base import Base
@@ -16,6 +16,15 @@ class User(TimestampMixin, Base):
     is_google_user = Column(Boolean, nullable=False, default=False, index=True)
     role = Column(String(32), nullable=False, default='patient', index=True)
     is_active = Column(Boolean, nullable=False, default=True, index=True)
+    email_verified = Column(Boolean, nullable=False, default=False, index=True)
+
+    # Security & Password recovery fields
+    reset_token = Column(String(255), nullable=True)
+    reset_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    refresh_token = Column(String(255), nullable=True)
+    refresh_token_expires_at = Column(DateTime(timezone=True), nullable=True)
+    failed_login_attempts = Column(Integer, nullable=False, default=0)
+    lockout_until = Column(DateTime(timezone=True), nullable=True)
 
     symptom_records = relationship(
         'SymptomRecord',
@@ -38,6 +47,12 @@ class User(TimestampMixin, Base):
     )
     appointments = relationship(
         'Appointment',
+        back_populates='user',
+        cascade='all, delete-orphan',
+        lazy='selectin',
+    )
+    chat_messages = relationship(
+        'ChatMessage',
         back_populates='user',
         cascade='all, delete-orphan',
         lazy='selectin',

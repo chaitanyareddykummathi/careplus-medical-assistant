@@ -5,6 +5,7 @@ from app.models.prediction import KnowledgeChunk
 from app.models.symptom_log import SymptomLog
 from app.models.symptom import SymptomRecord
 from app.models.user import User
+from app.models.chat_message import ChatMessage
 
 __all__ = [
     'User',
@@ -14,4 +15,5 @@ __all__ = [
     'SymptomLog',
     'KnowledgeChunk',
     'AnalysisJob',
+    'ChatMessage',
 ]

@@ -91,6 +91,7 @@ class UserResponse(BaseModel):
 
 class TokenData(BaseModel):
     access_token: str
+    refresh_token: str | None = None
     token_type: str = 'bearer'
     expires_in: int
     user: UserResponse
@@ -116,3 +117,23 @@ class LogoutResponse(BaseModel):
     success: bool = True
     message: str = 'Logout successful.'
     data: dict = Field(default_factory=dict)
+
+
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str = Field(min_length=10)
+    password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode='after')
+    def verify_passwords_match(self) -> 'ResetPasswordRequest':
+        if self.password != self.confirm_password:
+            raise ValueError('Passwords do not match.')
+        return self
+
+
+class TokenRefreshRequest(BaseModel):
+    refresh_token: str = Field(min_length=10)

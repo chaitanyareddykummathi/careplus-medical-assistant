@@ -304,11 +304,24 @@
   background-color: var(--cp-white);
   outline: none;
   transition: all 0.3s;
+  width: 100%;
 }
 
 .select {
   cursor: pointer;
-  min-width: 200px;
+}
+
+.formRow {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+}
+
+@media (max-width: 600px) {
+  .formRow {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
 }
 
 .select:focus, .input:focus {

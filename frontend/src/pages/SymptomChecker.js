@@ -13,7 +13,7 @@ import {
   FiUser
 } from 'react-icons/fi';
 
-import { sendChatMessage, getApiErrorMessage } from '../services/api';
+import { sendChatMessage, getChatHistory, getApiErrorMessage } from '../services/api';
 import Badge from '../components/Badge';
 import { Spinner } from '../components/Loader';
 import styles from './CarePages.module.css';
@@ -104,6 +104,43 @@ function ListBlock({ title, items, icon: Icon, color = 'var(--cp-text)' }) {
   );
 }
 
+function parseInlineFormatting(text) {
+  if (!text) return '';
+  const parts = text.split(/\*\*([^*]+)\*\*/g);
+  return parts.map((part, i) => {
+    if (i % 2 === 1) {
+      return <strong key={i}>{part}</strong>;
+    }
+    const italicParts = part.split(/\*([^*]+)\*/g);
+    return italicParts.map((subPart, j) => {
+      if (j % 2 === 1) {
+        return <em key={j}>{subPart}</em>;
+      }
+      return subPart;
+    });
+  });
+}
+
+function renderFormattedContent(text) {
+  if (!text) return null;
+  const lines = text.split('\n');
+  return lines.map((line, idx) => {
+    let cleanLine = line.trim();
+    if (cleanLine.startsWith('- ') || cleanLine.startsWith('* ')) {
+      return (
+        <li key={idx} style={{ marginLeft: '1.25rem', listStyleType: 'disc', fontSize: '0.9rem', marginBottom: '0.25rem' }}>
+          {parseInlineFormatting(cleanLine.substring(2))}
+        </li>
+      );
+    }
+    return (
+      <p key={idx} style={{ margin: '0 0 0.5rem 0', fontSize: '0.9rem', lineHeight: '1.5' }}>
+        {parseInlineFormatting(cleanLine)}
+      </p>
+    );
+  });
+}
+
 function SymptomChecker() {
   const [text, setText] = useState('');
   const [messages, setMessages] = useState([
@@ -118,6 +155,48 @@ function SymptomChecker() {
   const [errorMessage, setErrorMessage] = useState('');
   const [voiceActive, setVoiceActive] = useState(false);
   const chatEndRef = useRef(null);
+
+  // Load chat history from DB on mount
+  useEffect(() => {
+    async function loadHistory() {
+      try {
+        const history = await getChatHistory();
+        if (history && history.length > 0) {
+          const formattedMessages = history.map((msg) => {
+            let parsedContent = msg.content;
+            let type = 'text';
+            if (msg.role === 'model') {
+              try {
+                parsedContent = JSON.parse(msg.content);
+                type = 'analysis';
+              } catch {
+                parsedContent = msg.content;
+                type = 'text';
+              }
+            }
+            return {
+              id: String(msg.id),
+              sender: msg.role === 'user' ? 'user' : 'bot',
+              type,
+              content: parsedContent,
+            };
+          });
+          setMessages([
+            {
+              id: 'welcome',
+              sender: 'bot',
+              type: 'text',
+              content: 'Hello! I am your CarePlus AI Medical Assistant. Please describe your symptoms naturally (e.g. "I have mild fever and sore throat for 3 days"), and I will conduct a structured triage analysis.'
+            },
+            ...formattedMessages
+          ]);
+        }
+      } catch (err) {
+        console.error('Failed to load chat history:', err);
+      }
+    }
+    loadHistory();
+  }, []);
 
   const activeAnalysisResult = useMemo(() => {
     const analysisMsgs = messages.filter(m => m.sender === 'bot' && m.type === 'analysis');
@@ -136,6 +215,41 @@ function SymptomChecker() {
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isAnalyzing]);
+
+  // Simulate streaming responses word by word
+  const simulateStreaming = (result, botMsgId) => {
+    const fullReply = result.reply || '';
+    const words = fullReply.split(' ');
+    let currentReply = '';
+    let wordIdx = 0;
+
+    // Add bot message shell with an empty reply first
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: botMsgId,
+        sender: 'bot',
+        type: 'analysis',
+        content: { ...result, reply: '' }
+      }
+    ]);
+
+    const timer = setInterval(() => {
+      if (wordIdx < words.length) {
+        currentReply += (wordIdx === 0 ? '' : ' ') + words[wordIdx];
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === botMsgId
+              ? { ...msg, content: { ...msg.content, reply: currentReply } }
+              : msg
+          )
+        );
+        wordIdx++;
+      } else {
+        clearInterval(timer);
+      }
+    }, 25);
+  };
 
   const handleAnalyze = async (inputText) => {
     const cleanText = inputText.trim();
@@ -168,12 +282,9 @@ function SymptomChecker() {
         JSON.stringify({ ...result, analyzed_at: new Date().toISOString() })
       );
 
-      // 4. Add Bot analysis message
+      // 4. Stream Bot analysis message
       const botMsgId = 'bot-' + Date.now();
-      setMessages((prev) => [
-        ...prev,
-        { id: botMsgId, sender: 'bot', type: 'analysis', content: result }
-      ]);
+      simulateStreaming(result, botMsgId);
     } catch (error) {
       const errMsg = getApiErrorMessage(error, 'Could not complete clinical analysis. Please try again.');
       setErrorMessage(errMsg);
@@ -204,6 +315,28 @@ function SymptomChecker() {
 
   return (
     <section className={styles.page}>
+      {/* Styles for high/medium risk pulse effects */}
+      <style>{`
+        @keyframes pulse-red {
+          0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+        }
+        @keyframes pulse-amber {
+          0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+        .pulse-high {
+          animation: pulse-red 2s infinite;
+          border: 1px solid #ef4444 !important;
+        }
+        .pulse-medium {
+          animation: pulse-amber 2s infinite;
+          border: 1px solid #f59e0b !important;
+        }
+      `}</style>
+
       <div className="container">
         {/* Header Title Section */}
         <div style={{ textAlign: 'center', marginBottom: '2.5rem' }}>
@@ -229,49 +362,99 @@ function SymptomChecker() {
 
             {/* Chat Messages Log */}
             <div className={styles.chatLog}>
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  className={`${styles.chatRow} ${msg.sender === 'user' ? styles.rowUser : styles.rowBot}`}
-                >
-                  <div className={styles.bubble}>
-                    {msg.type === 'text' ? (
-                      <p style={{ margin: 0, fontSize: '0.925rem', lineHeight: '1.5' }}>{msg.content}</p>
-                    ) : (
-                      // Structured Analysis Bubble inside chat
-                      <div className={styles.analysisBubble}>
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
-                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--cp-primary)' }}>Structured Triage Response</span>
-                          <Badge variant={msg.content.risk_level?.toUpperCase() === 'HIGH' ? 'danger' : msg.content.risk_level?.toUpperCase() === 'MEDIUM' ? 'warning' : 'success'}>
-                            {msg.content.risk_level} Risk
-                          </Badge>
-                        </div>
-                        <p style={{ margin: '0 0 0.75rem 0', fontSize: '0.9rem', lineHeight: '1.5', fontWeight: 500 }}>
-                          {msg.content.analysis_summary || msg.content.recommendation}
-                        </p>
-                        
-                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--cp-subtext)', marginBottom: '0.5rem' }}>
-                          <div>Confidence: <strong>{Math.round(Number(msg.content.confidence || 0) * 100)}%</strong></div>
-                          <div>Urgency: <strong>{msg.content.urgency}</strong></div>
-                        </div>
+              {messages.map((msg) => {
+                const isUser = msg.sender === 'user';
+                const isBotText = msg.type === 'text';
+                const riskLevel = msg.content?.risk_level?.toUpperCase();
+                let pulseClass = '';
+                if (riskLevel === 'HIGH') pulseClass = 'pulse-high';
+                else if (riskLevel === 'MEDIUM') pulseClass = 'pulse-medium';
 
-                        <div style={{ borderTop: '1px solid var(--cp-border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
-                          <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', display: 'block' }}>Suggested Specialist</span>
-                          <strong style={{ fontSize: '0.875rem', color: 'var(--cp-text)' }}>
-                            {msg.content.recommended_specialist} ({msg.content.recommended_department})
-                          </strong>
+                return (
+                  <div
+                    key={msg.id}
+                    className={`${styles.chatRow} ${isUser ? styles.rowUser : styles.rowBot}`}
+                  >
+                    <div className={`${styles.bubble} ${pulseClass}`}>
+                      {isBotText ? (
+                        <p style={{ margin: 0, fontSize: '0.925rem', lineHeight: '1.5' }}>{msg.content}</p>
+                      ) : (
+                        // Structured Analysis Bubble inside chat
+                        <div className={styles.analysisBubble}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--cp-primary)' }}>Structured Triage Response</span>
+                            <Badge variant={riskLevel === 'HIGH' ? 'danger' : riskLevel === 'MEDIUM' ? 'warning' : 'success'}>
+                              {msg.content.risk_level} Risk
+                            </Badge>
+                          </div>
+                          
+                          {/* Markdown support wrapper */}
+                          <div style={{ margin: '0 0 0.75rem 0' }}>
+                            {renderFormattedContent(msg.content.reply || msg.content.analysis_summary || msg.content.recommendation)}
+                          </div>
+                          
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--cp-subtext)', marginBottom: '0.5rem' }}>
+                            {msg.content.confidence !== undefined && (
+                              <div>Confidence: <strong>{Math.round(Number(msg.content.confidence || 0) * 100)}%</strong></div>
+                            )}
+                            {msg.content.urgency && (
+                              <div>Urgency: <strong>{msg.content.urgency}</strong></div>
+                            )}
+                          </div>
+
+                          {msg.content.recommended_specialist && (
+                            <div style={{ borderTop: '1px solid var(--cp-border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', display: 'block' }}>Suggested Specialist</span>
+                              <strong style={{ fontSize: '0.875rem', color: 'var(--cp-text)' }}>
+                                {msg.content.recommended_specialist} ({msg.content.recommended_department})
+                              </strong>
+                            </div>
+                          )}
+
+                          {/* Suggested follow-up questions */}
+                          {msg.content.suggested_followup_questions && msg.content.suggested_followup_questions.length > 0 && (
+                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.8rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--cp-border)' }}>
+                              {msg.content.suggested_followup_questions.map((q, idx) => (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => handleAnalyze(q)}
+                                  disabled={isAnalyzing}
+                                  style={{
+                                    background: 'var(--cp-bg)',
+                                    border: '1px solid var(--cp-border)',
+                                    borderRadius: 'var(--radius-full)',
+                                    padding: '0.35rem 0.85rem',
+                                    fontSize: '0.75rem',
+                                    fontWeight: '600',
+                                    color: 'var(--cp-primary)',
+                                    cursor: 'pointer',
+                                    transition: 'all 0.25s'
+                                  }}
+                                  onMouseEnter={(e) => {
+                                    if (!isAnalyzing) e.currentTarget.style.backgroundColor = 'var(--cp-primary-light)';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    if (!isAnalyzing) e.currentTarget.style.backgroundColor = 'var(--cp-bg)';
+                                  }}
+                                >
+                                  {q}
+                                </button>
+                              ))}
+                            </div>
+                          )}
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
 
               {isAnalyzing && (
                 <div className={`${styles.chatRow} ${styles.rowBot}`}>
                   <div className={styles.bubble} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.2rem' }}>
                     <Spinner size="1.2rem" />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--cp-subtext)' }}>Analyzing symptoms...</span>
+                    <span style={{ fontSize: '0.85rem', color: 'var(--cp-subtext)' }}>AI Bot is writing...</span>
                   </div>
                 </div>
               )}

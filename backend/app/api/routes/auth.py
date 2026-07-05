@@ -13,6 +13,9 @@ from app.schemas.auth import (
     RegisterResponse,
     TokenResponse,
     UserProfileResponse,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
+    TokenRefreshRequest,
 )
 from app.services.auth_service import auth_service
 
@@ -51,3 +54,18 @@ def get_authenticated_user(current_user: User = Depends(get_current_user)) -> Us
 @router.post('/logout', response_model=LogoutResponse)
 def logout_user(_: User = Depends(get_current_user)) -> LogoutResponse:
     return LogoutResponse()
+
+
+@router.post('/forgot-password')
+def forgot_password(payload: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    return auth_service.forgot_password(db, payload.email)
+
+
+@router.post('/reset-password')
+def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db)):
+    return auth_service.reset_password(db, payload.token, payload.password)
+
+
+@router.post('/refresh', response_model=TokenResponse)
+def refresh_token(payload: TokenRefreshRequest, db: Session = Depends(get_db)) -> TokenResponse:
+    return auth_service.refresh_access_token(db, payload.refresh_token)

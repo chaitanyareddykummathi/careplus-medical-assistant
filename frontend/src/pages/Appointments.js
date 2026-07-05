@@ -425,7 +425,7 @@ function Appointments({ user }) {
               )}
 
               {/* Disease & Department select row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+              <div className={styles.formRow}>
                 <label className={styles.label}>
                   Disease Category
                   <select
@@ -467,7 +467,7 @@ function Appointments({ user }) {
               </label>
 
               {/* Date & Time slot Grid */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+              <div className={styles.formRow}>
                 <label className={styles.label}>
                   Appointment Date
                   <input

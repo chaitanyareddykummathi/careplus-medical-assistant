@@ -3,6 +3,7 @@ import axios from 'axios';
 const STORAGE_KEYS = {
   accessToken: 'token',
   legacyAccessToken: 'careplus_access_token',
+  refreshToken: 'careplus_refresh_token',
   user: 'careplus_user',
 };
 
@@ -45,17 +46,76 @@ http.interceptors.request.use((config) => {
   return config;
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) => {
+  failedQueue.forEach((prom) => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 http.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
     const status = error?.response?.status;
-    const requestUrl = String(error?.config?.url || '');
+    const requestUrl = String(originalRequest?.url || '');
     const isAuthRequest = requestUrl.includes('/auth/');
 
-    if (status === 401 && !isAuthRequest) {
-      clearStoredSession();
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
-        window.location.assign('/login');
+    if (status === 401 && !isAuthRequest && !originalRequest._retry) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({ resolve, reject });
+        })
+          .then((token) => {
+            originalRequest.headers['Authorization'] = 'Bearer ' + token;
+            return http(originalRequest);
+          })
+          .catch((err) => Promise.reject(err));
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      const refreshToken = localStorage.getItem(STORAGE_KEYS.refreshToken);
+      if (refreshToken) {
+        try {
+          const { data } = await axios.post(`${API_BASE_URL}${withApiPrefix('/auth/refresh')}`, {
+            refresh_token: refreshToken,
+          });
+          const authData = data?.data?.access_token ? data.data : data;
+
+          persistSession({
+            accessToken: authData.access_token,
+            refreshToken: authData.refresh_token,
+            user: authData.user,
+          });
+
+          isRefreshing = false;
+          processQueue(null, authData.access_token);
+
+          originalRequest.headers['Authorization'] = 'Bearer ' + authData.access_token;
+          return http(originalRequest);
+        } catch (refreshError) {
+          isRefreshing = false;
+          processQueue(refreshError, null);
+          clearStoredSession();
+          if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+            window.location.assign('/login');
+          }
+          return Promise.reject(refreshError);
+        }
+      } else {
+        clearStoredSession();
+        if (typeof window !== 'undefined' && window.location.pathname !== '/login') {
+          window.location.assign('/login');
+        }
       }
     }
 
@@ -63,13 +123,17 @@ http.interceptors.response.use(
   }
 );
 
-function persistSession({ accessToken, user }) {
+function persistSession({ accessToken, refreshToken, user }) {
   if (!isValidToken(accessToken)) {
     return;
   }
 
   localStorage.setItem(STORAGE_KEYS.accessToken, accessToken);
   localStorage.setItem(STORAGE_KEYS.legacyAccessToken, accessToken);
+
+  if (refreshToken) {
+    localStorage.setItem(STORAGE_KEYS.refreshToken, refreshToken);
+  }
 
   if (user) {
     localStorage.setItem(STORAGE_KEYS.user, JSON.stringify(user));
@@ -83,6 +147,7 @@ function getAuthData(responseData) {
 export function clearStoredSession() {
   localStorage.removeItem(STORAGE_KEYS.accessToken);
   localStorage.removeItem(STORAGE_KEYS.legacyAccessToken);
+  localStorage.removeItem(STORAGE_KEYS.refreshToken);
   localStorage.removeItem(STORAGE_KEYS.user);
 }
 
@@ -147,6 +212,7 @@ export async function loginUser(payload) {
   const authData = getAuthData(data);
   const session = {
     accessToken: authData.access_token,
+    refreshToken: authData.refresh_token || null,
     user: authData.user || null,
   };
   persistSession(session);
@@ -158,10 +224,26 @@ export async function googleLogin(payload) {
   const authData = getAuthData(data);
   const session = {
     accessToken: authData.access_token,
+    refreshToken: authData.refresh_token || null,
     user: authData.user || null,
   };
   persistSession(session);
   return session;
+}
+
+export async function forgotPassword(email) {
+  const { data } = await http.post(withApiPrefix('/auth/forgot-password'), { email });
+  return data;
+}
+
+export async function resetPassword(payload) {
+  const { data } = await http.post(withApiPrefix('/auth/reset-password'), payload);
+  return data;
+}
+
+export async function getChatHistory() {
+  const { data } = await http.get('/api/chat/history');
+  return data;
 }
 
 export async function getCurrentUser() {

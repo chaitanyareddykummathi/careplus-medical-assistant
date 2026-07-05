@@ -87,6 +87,27 @@ def _ensure_user_auth_columns() -> None:
             f'ALTER TABLE users ADD COLUMN updated_at {ts_type} NOT NULL DEFAULT {ts_default}'
         )
 
+    if 'reset_token' not in existing_columns:
+        alter_statements.append('ALTER TABLE users ADD COLUMN reset_token VARCHAR(255)')
+
+    if 'reset_token_expires_at' not in existing_columns:
+        alter_statements.append(f'ALTER TABLE users ADD COLUMN reset_token_expires_at {ts_type}')
+
+    if 'refresh_token' not in existing_columns:
+        alter_statements.append('ALTER TABLE users ADD COLUMN refresh_token VARCHAR(255)')
+
+    if 'refresh_token_expires_at' not in existing_columns:
+        alter_statements.append(f'ALTER TABLE users ADD COLUMN refresh_token_expires_at {ts_type}')
+
+    if 'failed_login_attempts' not in existing_columns:
+        alter_statements.append('ALTER TABLE users ADD COLUMN failed_login_attempts INTEGER NOT NULL DEFAULT 0')
+
+    if 'lockout_until' not in existing_columns:
+        alter_statements.append(f'ALTER TABLE users ADD COLUMN lockout_until {ts_type}')
+
+    if 'email_verified' not in existing_columns:
+        alter_statements.append(f'ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT {bool_false}')
+
     if alter_statements:
         with engine.begin() as connection:
             for statement in alter_statements:
@@ -107,6 +128,7 @@ def _ensure_user_auth_columns() -> None:
         connection.execute(text('CREATE INDEX IF NOT EXISTS ix_users_is_google_user ON users (is_google_user)'))
         connection.execute(text('CREATE INDEX IF NOT EXISTS ix_users_role ON users (role)'))
         connection.execute(text('CREATE INDEX IF NOT EXISTS ix_users_is_active ON users (is_active)'))
+        connection.execute(text('CREATE INDEX IF NOT EXISTS ix_users_email_verified ON users (email_verified)'))
 
 
 def _ensure_appointment_columns() -> None:

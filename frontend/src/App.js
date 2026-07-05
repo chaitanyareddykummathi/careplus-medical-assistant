@@ -12,6 +12,8 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import SymptomChecker from './pages/SymptomChecker';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import { getStoredSession, logoutUser } from './services/api';
 
 function ProtectedRoute({ isAuthenticated, children }) {
@@ -58,6 +60,8 @@ function App() {
             path="/register"
             element={isAuthenticated ? <Navigate replace to="/" /> : <Register onRegisterSuccess={handleLoginSuccess} />}
           />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route
             path="/dashboard"
             element={
