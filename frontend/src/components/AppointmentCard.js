@@ -31,7 +31,7 @@ function AppointmentCard({ appointment, onCancel, onReschedule }) {
             {appointment.status}
           </Badge>
           <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            ID: #{appointment.id.slice(-6).toUpperCase()}
+            ID: #{String(appointment.id || '').slice(-6).toUpperCase()}
           </span>
         </div>
 
