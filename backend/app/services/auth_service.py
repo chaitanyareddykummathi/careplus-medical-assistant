@@ -146,8 +146,14 @@ class AuthService:
             hashed_password=hash_password(payload.password),
             is_google_user=False,
             role='patient',
-            is_active=True,
+            is_active=False,
+            email_verified=False,
         )
+        
+        verification_token = secrets.token_urlsafe(32)
+        new_user.verification_token = verification_token
+        new_user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        
         db.add(new_user)
         try:
             db.commit()
@@ -169,10 +175,24 @@ class AuthService:
                 message='Unable to register right now. Please try again shortly.',
             ) from exc
 
-        logger.info('Register successful.', extra={'user_id': new_user.id})
+        # Send verification email
+        try:
+            from app.services.email_service import email_service
+            email_service.send_verification_email(new_user.email, new_user.name, verification_token)
+        except Exception as email_err:
+            logger.error(f"Failed to trigger verification email: {email_err}")
 
-        token_response = self._build_token_response(db, new_user, message='User registered successfully.')
-        return RegisterResponse(**token_response.model_dump())
+        logger.info('Register successful, awaiting email verification.', extra={'user_id': new_user.id})
+
+        response_dict = {
+            "success": True,
+            "message": "Registration successful. A verification email has been sent to your email address."
+        }
+        if settings.environment.lower() in {"development", "dev", "local", "test"}:
+            response_dict["verification_token"] = verification_token
+            response_dict["verification_url"] = f"http://localhost:3000/verify-email?token={verification_token}"
+
+        return RegisterResponse(**response_dict)
 
     def login_user(self, db: Session, payload: LoginRequest) -> TokenResponse:
         identifier = payload.resolved_identifier
@@ -224,6 +244,15 @@ class AuthService:
                 status_code=401,
                 error_code='INVALID_CREDENTIALS',
                 message='Invalid email/username or password.',
+            )
+
+        # 4. Check if email is verified
+        if not user.email_verified:
+            logger.warning('Login blocked: email not verified.', extra={'user_id': user.id})
+            raise AppException(
+                status_code=403,
+                error_code='EMAIL_NOT_VERIFIED',
+                message='Please verify your email address before logging in.',
             )
 
         if not user.is_active:
@@ -311,7 +340,7 @@ class AuthService:
                 name=display_name,
                 email=email,
                 username=generated_username,
-                hashed_password=hash_password(secrets.token_urlsafe(32)),
+                hashed_password=None,  # Google-only user starts with no password
                 is_google_user=True,
                 role='patient',
                 is_active=True,
@@ -339,6 +368,8 @@ class AuthService:
                 user.is_google_user = True
             if not user.email_verified:
                 user.email_verified = True
+            if not user.is_active:
+                user.is_active = True
             db.commit()
             db.refresh(user)
 
@@ -351,17 +382,26 @@ class AuthService:
             # Return success message to prevent user enumeration
             return {"success": True, "message": "If the email is registered, a password recovery link has been generated."}
 
-        if user.is_google_user:
+        # Case 2: Google-only user (has is_google_user=True and hashed_password=None)
+        if user.is_google_user and not user.hashed_password:
             raise AppException(
                 status_code=400,
                 error_code="GOOGLE_ACCOUNT_ONLY",
-                message="This account is registered via Google Sign-In. Please sign in with Google.",
+                message="This account is registered via Google Sign-In. Please sign in with Google. Once signed in, you can set a password in your Profile to enable password login.",
             )
 
+        # Case 1 & 3: Standard and Hybrid users
         token = secrets.token_urlsafe(32)
         user.reset_token = token
         user.reset_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
         db.commit()
+
+        # Send password reset email
+        try:
+            from app.services.email_service import email_service
+            email_service.send_password_reset_email(user.email, user.name, token)
+        except Exception as email_err:
+            logger.error(f"Failed to trigger password reset email: {email_err}")
 
         logger.info(f"Password reset token for {email}: {token}")
         
@@ -393,12 +433,88 @@ class AuthService:
         user.reset_token_expires_at = None
         user.failed_login_attempts = 0
         user.lockout_until = None
-        # Since they now have a set password, we let them login via password if they were google only
-        user.is_google_user = False
+        # Note: We do NOT set user.is_google_user = False, because if they are a hybrid account
+        # they should still be able to sign in via Google. They now have a password, so password login is also enabled.
         db.commit()
 
         logger.info(f"Password reset successful for user: {user.email}")
         return {"success": True, "message": "Password reset successful. You can now login with your new password."}
+
+    def verify_email(self, db: Session, token: str) -> dict:
+        user = db.query(User).filter(User.verification_token == token).first()
+        if not user:
+            raise AppException(400, "INVALID_VERIFICATION_TOKEN", "Invalid or expired verification token.")
+
+        expiry = user.verification_token_expires_at
+        if expiry:
+            if expiry.tzinfo is None:
+                expiry = expiry.replace(tzinfo=timezone.utc)
+            if expiry < datetime.now(timezone.utc):
+                raise AppException(400, "EXPIRED_VERIFICATION_TOKEN", "Verification token has expired. Please request a new verification link.")
+
+        user.email_verified = True
+        user.is_active = True
+        user.verification_token = None
+        user.verification_token_expires_at = None
+        db.commit()
+
+        logger.info(f"Email verified successfully for user: {user.email}")
+        return {"success": True, "message": "Email verified successfully. You can now log in."}
+
+    def resend_verification(self, db: Session, email: str) -> dict:
+        email = email.strip().lower()
+        user = db.query(User).filter(func.lower(User.email) == email).first()
+        if not user:
+            # Return success message to prevent user enumeration
+            return {"success": True, "message": "If the email is registered and unverified, a new verification link has been sent."}
+
+        if user.email_verified:
+            return {"success": True, "message": "Email is already verified. Please log in."}
+
+        token = secrets.token_urlsafe(32)
+        user.verification_token = token
+        user.verification_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=24)
+        db.commit()
+
+        # Send verification email
+        try:
+            from app.services.email_service import email_service
+            email_service.send_verification_email(user.email, user.name, token)
+        except Exception as email_err:
+            logger.error(f"Failed to trigger verification email resend: {email_err}")
+
+        response = {
+            "success": True,
+            "message": "If the email is registered and unverified, a new verification link has been sent."
+        }
+        if settings.environment.lower() in {"development", "dev", "local", "test"}:
+            response["verification_token"] = token
+            response["verification_url"] = f"http://localhost:3000/verify-email?token={token}"
+
+        return response
+
+    def set_password(self, db: Session, user: User, new_password: str) -> dict:
+        if user.hashed_password:
+            raise AppException(400, "PASSWORD_ALREADY_SET", "Password has already been set for this account.")
+
+        user.hashed_password = hash_password(new_password)
+        db.commit()
+
+        logger.info(f"Password set successfully for user: {user.email}")
+        return {"success": True, "message": "Password created successfully. You can now sign in using either Google or your password."}
+
+    def change_password(self, db: Session, user: User, current_password: str, new_password: str) -> dict:
+        if not user.hashed_password:
+            raise AppException(400, "NO_PASSWORD_SET", "No password is set on this account yet.")
+
+        if not verify_password(current_password, user.hashed_password):
+            raise AppException(400, "INCORRECT_CURRENT_PASSWORD", "Incorrect current password.")
+
+        user.hashed_password = hash_password(new_password)
+        db.commit()
+
+        logger.info(f"Password changed successfully for user: {user.email}")
+        return {"success": True, "message": "Password updated successfully."}
 
     def refresh_access_token(self, db: Session, refresh_token: str) -> TokenResponse:
         user = db.query(User).filter(User.refresh_token == refresh_token).first()
@@ -488,6 +604,7 @@ class AuthService:
             role=user.role,
             is_active=user.is_active,
             created_at=user.created_at,
+            has_password=user.hashed_password is not None,
         )
 
     @staticmethod

@@ -47,6 +47,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         if not is_nlp_path and not is_auth_path:
             return await call_next(request)
 
+        if settings.environment.lower() in {'test', 'testing'}:
+            return await call_next(request)
+
         window_seconds = 60
         ip_address = request.client.host if request.client else 'unknown'
         minute_bucket = int(time.time() // window_seconds)

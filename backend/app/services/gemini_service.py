@@ -45,7 +45,7 @@ Do not include any markdown formatting like ```json or comments outside the JSON
 class GeminiService:
     def __init__(self) -> None:
         self.api_key = settings.google_api_key or os.getenv("GOOGLE_API_KEY")
-        self.model_name = "gemini-1.5-flash"
+        self.model_name = "gemini-3.5-flash"
         self._configured = False
         self._init_client()
 

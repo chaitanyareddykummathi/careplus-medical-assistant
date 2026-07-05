@@ -25,6 +25,8 @@ class User(TimestampMixin, Base):
     refresh_token_expires_at = Column(DateTime(timezone=True), nullable=True)
     failed_login_attempts = Column(Integer, nullable=False, default=0)
     lockout_until = Column(DateTime(timezone=True), nullable=True)
+    verification_token = Column(String(255), nullable=True)
+    verification_token_expires_at = Column(DateTime(timezone=True), nullable=True)
 
     symptom_records = relationship(
         'SymptomRecord',

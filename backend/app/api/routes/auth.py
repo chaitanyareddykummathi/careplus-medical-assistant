@@ -16,6 +16,10 @@ from app.schemas.auth import (
     ForgotPasswordRequest,
     ResetPasswordRequest,
     TokenRefreshRequest,
+    VerifyEmailRequest,
+    ResendVerificationRequest,
+    SetPasswordRequest,
+    ChangePasswordRequest,
 )
 from app.services.auth_service import auth_service
 
@@ -69,3 +73,31 @@ def reset_password(payload: ResetPasswordRequest, db: Session = Depends(get_db))
 @router.post('/refresh', response_model=TokenResponse)
 def refresh_token(payload: TokenRefreshRequest, db: Session = Depends(get_db)) -> TokenResponse:
     return auth_service.refresh_access_token(db, payload.refresh_token)
+
+
+@router.post('/verify-email')
+def verify_email(payload: VerifyEmailRequest, db: Session = Depends(get_db)):
+    return auth_service.verify_email(db, payload.token)
+
+
+@router.post('/resend-verification')
+def resend_verification(payload: ResendVerificationRequest, db: Session = Depends(get_db)):
+    return auth_service.resend_verification(db, payload.email)
+
+
+@router.post('/set-password')
+def set_password(
+    payload: SetPasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return auth_service.set_password(db, current_user, payload.password)
+
+
+@router.post('/change-password')
+def change_password(
+    payload: ChangePasswordRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return auth_service.change_password(db, current_user, payload.current_password, payload.new_password)

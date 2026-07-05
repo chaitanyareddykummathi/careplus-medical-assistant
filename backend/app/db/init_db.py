@@ -108,6 +108,12 @@ def _ensure_user_auth_columns() -> None:
     if 'email_verified' not in existing_columns:
         alter_statements.append(f'ALTER TABLE users ADD COLUMN email_verified BOOLEAN NOT NULL DEFAULT {bool_false}')
 
+    if 'verification_token' not in existing_columns:
+        alter_statements.append('ALTER TABLE users ADD COLUMN verification_token VARCHAR(255)')
+
+    if 'verification_token_expires_at' not in existing_columns:
+        alter_statements.append(f'ALTER TABLE users ADD COLUMN verification_token_expires_at {ts_type}')
+
     if alter_statements:
         with engine.begin() as connection:
             for statement in alter_statements:

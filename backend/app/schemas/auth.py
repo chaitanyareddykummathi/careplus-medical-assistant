@@ -87,6 +87,7 @@ class UserResponse(BaseModel):
     role: str
     is_active: bool
     created_at: datetime
+    has_password: bool = False
 
 
 class TokenData(BaseModel):
@@ -103,8 +104,12 @@ class TokenResponse(BaseModel):
     data: TokenData
 
 
-class RegisterResponse(TokenResponse):
-    pass
+class RegisterResponse(BaseModel):
+    success: bool = True
+    message: str
+    data: TokenData | None = None
+    verification_token: str | None = None
+    verification_url: str | None = None
 
 
 class UserProfileResponse(BaseModel):
@@ -137,3 +142,34 @@ class ResetPasswordRequest(BaseModel):
 
 class TokenRefreshRequest(BaseModel):
     refresh_token: str = Field(min_length=10)
+
+
+class VerifyEmailRequest(BaseModel):
+    token: str = Field(min_length=10)
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
+class SetPasswordRequest(BaseModel):
+    password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode='after')
+    def verify_passwords_match(self) -> 'SetPasswordRequest':
+        if self.password != self.confirm_password:
+            raise ValueError('Passwords do not match.')
+        return self
+
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(min_length=1, max_length=128)
+    new_password: str = Field(min_length=8, max_length=128)
+    confirm_password: str = Field(min_length=8, max_length=128)
+
+    @model_validator(mode='after')
+    def verify_passwords_match(self) -> 'ChangePasswordRequest':
+        if self.new_password != self.confirm_password:
+            raise ValueError('New passwords do not match.')
+        return self

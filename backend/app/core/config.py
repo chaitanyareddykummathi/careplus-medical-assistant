@@ -71,6 +71,16 @@ class Settings:
     embedding_model: str
     embedding_dimension: int
     model_version_tag: str
+    
+    # SMTP Settings
+    smtp_host: str | None
+    smtp_port: int
+    smtp_username: str | None
+    smtp_password: str | None
+    smtp_from_email: str
+    smtp_from_name: str
+    smtp_tls: bool
+    smtp_ssl: bool
 
 
 @lru_cache(maxsize=1)
@@ -172,4 +182,12 @@ def get_settings() -> Settings:
         embedding_model=os.getenv('EMBEDDING_MODEL', 'sentence-transformers/all-MiniLM-L6-v2'),
         embedding_dimension=_as_int(os.getenv('EMBEDDING_DIMENSION'), 384),
         model_version_tag=os.getenv('MODEL_VERSION_TAG', 'v1'),
+        smtp_host=os.getenv('SMTP_HOST'),
+        smtp_port=_as_int(os.getenv('SMTP_PORT'), 587),
+        smtp_username=os.getenv('SMTP_USERNAME'),
+        smtp_password=os.getenv('SMTP_PASSWORD'),
+        smtp_from_email=os.getenv('SMTP_FROM_EMAIL', 'noreply@careplus.com'),
+        smtp_from_name=os.getenv('SMTP_FROM_NAME', 'CarePlus Medical Assistant'),
+        smtp_tls=_as_bool(os.getenv('SMTP_TLS'), True),
+        smtp_ssl=_as_bool(os.getenv('SMTP_SSL'), False),
     )
