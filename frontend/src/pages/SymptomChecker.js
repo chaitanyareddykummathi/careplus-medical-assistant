@@ -1,9 +1,8 @@
-import React, { useMemo, useState, useRef, useEffect } from 'react';
+import React, { useMemo, useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FiSend,
-  FiMic,
   FiActivity,
   FiCheckCircle,
   FiInfo,
@@ -141,6 +140,92 @@ function renderFormattedContent(text) {
   });
 }
 
+const ChatBubble = React.memo(({ msg, isAnalyzing, onFollowupClick }) => {
+  const isUser = msg.sender === 'user';
+  const isBotText = msg.type === 'text';
+  const riskLevel = msg.content?.risk_level?.toUpperCase();
+  let pulseClass = '';
+  if (riskLevel === 'HIGH') pulseClass = 'pulse-high';
+  else if (riskLevel === 'MEDIUM') pulseClass = 'pulse-medium';
+
+  return (
+    <div className={`${styles.chatRow} ${isUser ? styles.rowUser : styles.rowBot}`}>
+      <div className={`${styles.bubble} ${pulseClass}`}>
+        {isBotText ? (
+          <p style={{ margin: 0, fontSize: '0.925rem', lineHeight: '1.5' }}>{msg.content}</p>
+        ) : (
+          <div className={styles.analysisBubble}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--cp-primary)' }}>Structured Triage Response</span>
+              <Badge variant={riskLevel === 'HIGH' ? 'danger' : riskLevel === 'MEDIUM' ? 'warning' : 'success'}>
+                {msg.content.risk_level} Risk
+              </Badge>
+            </div>
+            
+            <div style={{ margin: '0 0 0.75rem 0' }}>
+              {renderFormattedContent(msg.content.reply || msg.content.analysis_summary || msg.content.recommendation)}
+            </div>
+            
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--cp-subtext)', marginBottom: '0.5rem' }}>
+              {msg.content.confidence !== undefined && (
+                <div>Confidence: <strong>{Math.round(Number(msg.content.confidence || 0) * 100)}%</strong></div>
+              )}
+              {msg.content.urgency && (
+                <div>Urgency: <strong>{msg.content.urgency}</strong></div>
+              )}
+            </div>
+
+            {msg.content.recommended_specialist && (
+              <div style={{ borderTop: '1px solid var(--cp-border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
+                <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', display: 'block' }}>Suggested Specialist</span>
+                <strong style={{ fontSize: '0.875rem', color: 'var(--cp-text)' }}>
+                  {msg.content.recommended_specialist} ({msg.content.recommended_department})
+                </strong>
+              </div>
+            )}
+
+            {msg.content.suggested_followup_questions && msg.content.suggested_followup_questions.length > 0 && (
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.8rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--cp-border)' }}>
+                {msg.content.suggested_followup_questions.map((q, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => onFollowupClick(q)}
+                    disabled={isAnalyzing}
+                    style={{
+                      background: 'var(--cp-bg)',
+                      border: '1px solid var(--cp-border)',
+                      borderRadius: 'var(--radius-full)',
+                      padding: '0.35rem 0.85rem',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      color: 'var(--cp-primary)',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseOver={(e) => {
+                      if (!isAnalyzing) {
+                        e.currentTarget.style.background = 'var(--cp-primary-light)';
+                        e.currentTarget.style.borderColor = 'var(--cp-primary)';
+                      }
+                    }}
+                    onMouseOut={(e) => {
+                      e.currentTarget.style.background = 'var(--cp-bg)';
+                      e.currentTarget.style.borderColor = 'var(--cp-border)';
+                    }}
+                  >
+                    {q}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+});
+
 function SymptomChecker() {
   const [text, setText] = useState('');
   const [messages, setMessages] = useState([
@@ -153,8 +238,13 @@ function SymptomChecker() {
   ]);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
-  const [voiceActive, setVoiceActive] = useState(false);
   const chatEndRef = useRef(null);
+  const chatLogRef = useRef(null);
+  const messagesRef = useRef(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   // Load chat history from DB on mount
   useEffect(() => {
@@ -213,8 +303,13 @@ function SymptomChecker() {
   }, [activeAnalysisResult]);
 
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isAnalyzing]);
+    if (chatLogRef.current) {
+      chatLogRef.current.scrollTo({
+        top: chatLogRef.current.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, [messages.length]);
 
   // Simulate streaming responses word by word
   const simulateStreaming = (result, botMsgId) => {
@@ -245,15 +340,20 @@ function SymptomChecker() {
           )
         );
         wordIdx++;
+        
+        // Scroll pinning during streaming (Task scroll pinning)
+        if (chatLogRef.current) {
+          chatLogRef.current.scrollTop = chatLogRef.current.scrollHeight;
+        }
       } else {
         clearInterval(timer);
       }
     }, 25);
   };
 
-  const handleAnalyze = async (inputText) => {
+  const handleAnalyze = useCallback(async (inputText) => {
     const cleanText = inputText.trim();
-    if (!cleanText) return;
+    if (!cleanText || isAnalyzing) return;
 
     setErrorMessage('');
     
@@ -261,8 +361,8 @@ function SymptomChecker() {
     const userMsgId = 'user-' + Date.now();
     setMessages((prev) => [...prev, { id: userMsgId, sender: 'user', type: 'text', content: cleanText }]);
     
-    // Build history from messages state
-    const history = messages
+    // Build history from messages ref to avoid messages state re-renders during streaming
+    const history = messagesRef.current
       .filter((msg) => msg.id !== 'welcome')
       .map((msg) => ({
         role: msg.sender === 'user' ? 'user' : 'model',
@@ -295,22 +395,11 @@ function SymptomChecker() {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [isAnalyzing]);
 
   const handleSubmit = (event) => {
     event.preventDefault();
     handleAnalyze(text);
-  };
-
-  const handleVoiceClick = () => {
-    setVoiceActive(!voiceActive);
-    if (!voiceActive) {
-      setText('Analyzing simulated voice input...');
-      setTimeout(() => {
-        setText('I have high fever and severe cough since yesterday');
-        setVoiceActive(false);
-      }, 1500);
-    }
   };
 
   return (
@@ -361,100 +450,24 @@ function SymptomChecker() {
             </div>
 
             {/* Chat Messages Log */}
-            <div className={styles.chatLog}>
-              {messages.map((msg) => {
-                const isUser = msg.sender === 'user';
-                const isBotText = msg.type === 'text';
-                const riskLevel = msg.content?.risk_level?.toUpperCase();
-                let pulseClass = '';
-                if (riskLevel === 'HIGH') pulseClass = 'pulse-high';
-                else if (riskLevel === 'MEDIUM') pulseClass = 'pulse-medium';
-
-                return (
-                  <div
-                    key={msg.id}
-                    className={`${styles.chatRow} ${isUser ? styles.rowUser : styles.rowBot}`}
-                  >
-                    <div className={`${styles.bubble} ${pulseClass}`}>
-                      {isBotText ? (
-                        <p style={{ margin: 0, fontSize: '0.925rem', lineHeight: '1.5' }}>{msg.content}</p>
-                      ) : (
-                        // Structured Analysis Bubble inside chat
-                        <div className={styles.analysisBubble}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--cp-border)', paddingBottom: '0.75rem', marginBottom: '0.75rem' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--cp-primary)' }}>Structured Triage Response</span>
-                            <Badge variant={riskLevel === 'HIGH' ? 'danger' : riskLevel === 'MEDIUM' ? 'warning' : 'success'}>
-                              {msg.content.risk_level} Risk
-                            </Badge>
-                          </div>
-                          
-                          {/* Markdown support wrapper */}
-                          <div style={{ margin: '0 0 0.75rem 0' }}>
-                            {renderFormattedContent(msg.content.reply || msg.content.analysis_summary || msg.content.recommendation)}
-                          </div>
-                          
-                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--cp-subtext)', marginBottom: '0.5rem' }}>
-                            {msg.content.confidence !== undefined && (
-                              <div>Confidence: <strong>{Math.round(Number(msg.content.confidence || 0) * 100)}%</strong></div>
-                            )}
-                            {msg.content.urgency && (
-                              <div>Urgency: <strong>{msg.content.urgency}</strong></div>
-                            )}
-                          </div>
-
-                          {msg.content.recommended_specialist && (
-                            <div style={{ borderTop: '1px solid var(--cp-border)', paddingTop: '0.5rem', marginTop: '0.5rem' }}>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', display: 'block' }}>Suggested Specialist</span>
-                              <strong style={{ fontSize: '0.875rem', color: 'var(--cp-text)' }}>
-                                {msg.content.recommended_specialist} ({msg.content.recommended_department})
-                              </strong>
-                            </div>
-                          )}
-
-                          {/* Suggested follow-up questions */}
-                          {msg.content.suggested_followup_questions && msg.content.suggested_followup_questions.length > 0 && (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.8rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--cp-border)' }}>
-                              {msg.content.suggested_followup_questions.map((q, idx) => (
-                                <button
-                                  key={idx}
-                                  type="button"
-                                  onClick={() => handleAnalyze(q)}
-                                  disabled={isAnalyzing}
-                                  style={{
-                                    background: 'var(--cp-bg)',
-                                    border: '1px solid var(--cp-border)',
-                                    borderRadius: 'var(--radius-full)',
-                                    padding: '0.35rem 0.85rem',
-                                    fontSize: '0.75rem',
-                                    fontWeight: '600',
-                                    color: 'var(--cp-primary)',
-                                    cursor: 'pointer',
-                                    transition: 'all 0.25s'
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    if (!isAnalyzing) e.currentTarget.style.backgroundColor = 'var(--cp-primary-light)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    if (!isAnalyzing) e.currentTarget.style.backgroundColor = 'var(--cp-bg)';
-                                  }}
-                                >
-                                  {q}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+            <div className={styles.chatLog} ref={chatLogRef}>
+              {messages.map((msg) => (
+                <ChatBubble
+                  key={msg.id}
+                  msg={msg}
+                  isAnalyzing={isAnalyzing}
+                  onFollowupClick={handleAnalyze}
+                />
+              ))}
 
               {isAnalyzing && (
                 <div className={`${styles.chatRow} ${styles.rowBot}`}>
-                  <div className={styles.bubble} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.8rem 1.2rem' }}>
-                    <Spinner size="1.2rem" />
-                    <span style={{ fontSize: '0.85rem', color: 'var(--cp-subtext)' }}>AI Bot is writing...</span>
+                  <div className={styles.bubble} style={{ padding: '0.8rem 1.2rem' }}>
+                    <div className={styles.typingIndicator}>
+                      <span></span>
+                      <span></span>
+                      <span></span>
+                    </div>
                   </div>
                 </div>
               )}
@@ -464,14 +477,6 @@ function SymptomChecker() {
 
             {/* Input Bar */}
             <form onSubmit={handleSubmit} className={styles.chatInputRow}>
-              <button
-                type="button"
-                onClick={handleVoiceClick}
-                className={`${styles.iconBtn} ${voiceActive ? styles.voicePulse : ''}`}
-                title="Mock Speech-to-Text"
-              >
-                <FiMic size={18} />
-              </button>
               <input
                 type="text"
                 value={text}
@@ -479,6 +484,7 @@ function SymptomChecker() {
                 placeholder="Type symptoms (e.g. Cough and body pain for 3 days)..."
                 disabled={isAnalyzing}
                 className={styles.chatInput}
+                style={{ paddingLeft: '1.2rem' }}
               />
               <button
                 type="submit"

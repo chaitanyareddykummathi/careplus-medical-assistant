@@ -7,7 +7,13 @@ from app.api.deps.auth import require_roles
 from app.db.deps import get_db
 from app.models.user import User
 from app.repositories.health_profile_repository import health_profile_repository
-from app.services.gemini_service import gemini_service
+from app.services.gemini_service import (
+    gemini_service,
+    GeminiAuthError,
+    GeminiQuotaError,
+    GeminiTimeoutError,
+    GeminiNetworkError
+)
 from app.services.hospital_service import hospital_service
 
 logger = logging.getLogger(__name__)
@@ -141,15 +147,119 @@ async def chat_with_gemini(
             history=history_dicts,
             profile_context=profile_context
         )
+    except GeminiQuotaError as e:
+        logger.error(f"Gemini quota error: {e}")
+        error_reply = ChatResponse(
+            reply="AI service quota exceeded. Please try again later.",
+            risk_level="LOW",
+            urgency="Monitor",
+            possible_conditions=[],
+            extracted_symptoms=[],
+            condition_explanation="Service quota limit reached.",
+            home_care_advice=["Please try again in a few minutes.", "Check your plan limits if the issue persists."],
+            warning_signs=[],
+            emergency_symptoms=[],
+            recommended_tests=[],
+            should_see_doctor=False,
+            medical_disclaimer="AI service quota exceeded. Assistant offline.",
+            nearby_specialists=[],
+            suggested_followup_questions=[]
+        )
+        # Save error message from bot
+        try:
+            bot_message_db = ChatMessage(
+                user_id=current_user.id,
+                role="model",
+                content=json.dumps(error_reply.model_dump()),
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(bot_message_db)
+            db.commit()
+        except Exception as db_err:
+            logger.error(f"Failed to save bot error chat message: {db_err}")
+            db.rollback()
+        return error_reply
+    except GeminiAuthError as e:
+        logger.error(f"Gemini auth error: {e}")
+        error_reply = ChatResponse(
+            reply="AI service authentication failed. The assistant is currently misconfigured.",
+            risk_level="LOW",
+            urgency="Monitor",
+            possible_conditions=[],
+            extracted_symptoms=[],
+            condition_explanation="Invalid API key or authentication failure.",
+            home_care_advice=["Contact administrator to configure the API key."],
+            warning_signs=[],
+            emergency_symptoms=[],
+            recommended_tests=[],
+            should_see_doctor=False,
+            medical_disclaimer="AI assistant is offline due to authentication issues.",
+            nearby_specialists=[],
+            suggested_followup_questions=[]
+        )
+        # Save error message from bot
+        try:
+            bot_message_db = ChatMessage(
+                user_id=current_user.id,
+                role="model",
+                content=json.dumps(error_reply.model_dump()),
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(bot_message_db)
+            db.commit()
+        except Exception as db_err:
+            logger.error(f"Failed to save bot error chat message: {db_err}")
+            db.rollback()
+        return error_reply
+    except (GeminiTimeoutError, GeminiNetworkError) as e:
+        logger.error(f"Gemini connection error: {e}")
+        error_reply = ChatResponse(
+            reply="Unable to contact AI service. Please check your connection and try again.",
+            risk_level="LOW",
+            urgency="Monitor",
+            possible_conditions=[],
+            extracted_symptoms=[],
+            condition_explanation="Network timeout or unreachable service.",
+            home_care_advice=["Check your internet connection.", "Retry your query in a few moments."],
+            warning_signs=[],
+            emergency_symptoms=[],
+            recommended_tests=[],
+            should_see_doctor=False,
+            medical_disclaimer="AI service is offline/unreachable.",
+            nearby_specialists=[],
+            suggested_followup_questions=[]
+        )
+        # Save error message from bot
+        try:
+            bot_message_db = ChatMessage(
+                user_id=current_user.id,
+                role="model",
+                content=json.dumps(error_reply.model_dump()),
+                created_at=datetime.now(timezone.utc)
+            )
+            db.add(bot_message_db)
+            db.commit()
+        except Exception as db_err:
+            logger.error(f"Failed to save bot error chat message: {db_err}")
+            db.rollback()
+        return error_reply
     except Exception as e:
-        logger.error(f"Gemini generation error: {e}")
-        # Always return a valid response containing the error message to avoid crashing
+        logger.error(f"Unexpected Gemini generation error: {e}")
         error_reply = ChatResponse(
             reply="AI service is temporarily unavailable. Please try again later.",
             risk_level="LOW",
             urgency="Monitor",
+            possible_conditions=[],
+            extracted_symptoms=[],
+            condition_explanation="An unexpected error occurred during analysis.",
+            home_care_advice=["Please try again later."],
+            warning_signs=[],
+            emergency_symptoms=[],
+            recommended_tests=[],
             should_see_doctor=False,
-            medical_disclaimer="AI assistant is currently offline."
+            medical_disclaimer="AI assistant is currently offline.",
+            nearby_specialists=[],
+            suggested_followup_questions=[]
         )
         # Save error message from bot
         try:

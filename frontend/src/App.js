@@ -14,6 +14,7 @@ import Register from './pages/Register';
 import SymptomChecker from './pages/SymptomChecker';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
+import VerifyEmail from './pages/VerifyEmail';
 import { getStoredSession, logoutUser } from './services/api';
 
 function ProtectedRoute({ isAuthenticated, children }) {
@@ -62,6 +63,7 @@ function App() {
           />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
+          <Route path="/verify-email" element={<VerifyEmail />} />
           <Route
             path="/dashboard"
             element={

@@ -98,7 +98,7 @@ def get_settings() -> Settings:
     client_id = os.getenv('GOOGLE_OAUTH_CLIENT_ID') or os.getenv('GOOGLE_CLIENT_ID') or os.getenv('REACT_APP_GOOGLE_CLIENT_ID')
     client_secret = os.getenv('GOOGLE_OAUTH_CLIENT_SECRET') or os.getenv('GOOGLE_CLIENT_SECRET')
     redirect_uri = os.getenv('GOOGLE_OAUTH_REDIRECT_URI') or os.getenv('GOOGLE_REDIRECT_URI')
-    gemini_key = os.getenv('GOOGLE_API_KEY')
+    gemini_key = os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY')
 
     if not client_id or 'your_client_id' in client_id.lower() or 'placeholder' in client_id.lower():
         logger.warning("GOOGLE_CLIENT_ID is not configured or is placeholder! Google Login will show invalid_client 401.")
@@ -116,9 +116,9 @@ def get_settings() -> Settings:
         logger.info(f"GOOGLE_REDIRECT_URI is set to: {redirect_uri}")
 
     if not gemini_key or 'placeholder' in gemini_key.lower() or 'your_gemini' in gemini_key.lower():
-        logger.warning("GOOGLE_API_KEY (Gemini API Key) is not configured! Gemini service will run in mock fallback mode.")
+        logger.warning("GEMINI_API_KEY/GOOGLE_API_KEY is not configured! Gemini service will fail to initialize.")
     else:
-        logger.info("GOOGLE_API_KEY is configured.")
+        logger.info(f"GEMINI_API_KEY/GOOGLE_API_KEY is loaded. First 6 chars: {gemini_key[:6]}...")
     jwt_secret_key = os.getenv('JWT_SECRET_KEY') or os.getenv('JWT_SECRET')
     if not jwt_secret_key and environment.lower() not in {'development', 'dev', 'local', 'test'}:
         raise RuntimeError('Set JWT_SECRET_KEY in environment.')
@@ -147,7 +147,7 @@ def get_settings() -> Settings:
             os.getenv('GOOGLE_OAUTH_REDIRECT_URI')
             or os.getenv('GOOGLE_REDIRECT_URI')
         ),
-        google_api_key=os.getenv('GOOGLE_API_KEY'),
+        google_api_key=os.getenv('GEMINI_API_KEY') or os.getenv('GOOGLE_API_KEY'),
         cors_allow_origins=tuple(
             _as_csv(
                 os.getenv('CORS_ALLOW_ORIGINS'),

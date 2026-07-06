@@ -16,7 +16,7 @@ const http = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
-  timeout: 15000,
+  timeout: 30000,
 });
 
 function withApiPrefix(path) {
@@ -238,6 +238,26 @@ export async function forgotPassword(email) {
 
 export async function resetPassword(payload) {
   const { data } = await http.post(withApiPrefix('/auth/reset-password'), payload);
+  return data;
+}
+
+export async function verifyEmail(payload) {
+  const { data } = await http.post(withApiPrefix('/auth/verify-email'), payload);
+  return data;
+}
+
+export async function resendVerification(email) {
+  const { data } = await http.post(withApiPrefix('/auth/resend-verification'), { email });
+  return data;
+}
+
+export async function setPassword(payload) {
+  const { data } = await http.post(withApiPrefix('/auth/set-password'), payload);
+  return data;
+}
+
+export async function changePassword(payload) {
+  const { data } = await http.post(withApiPrefix('/auth/change-password'), payload);
   return data;
 }
 

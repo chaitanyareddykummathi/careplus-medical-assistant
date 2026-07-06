@@ -9,7 +9,10 @@ import {
   FiAlertTriangle,
   FiInfo,
   FiArrowLeft,
-  FiSave
+  FiSave,
+  FiLock,
+  FiEye,
+  FiEyeOff
 } from 'react-icons/fi';
 
 import {
@@ -17,6 +20,9 @@ import {
   getHealthProfile,
   saveHealthProfile,
   updateHealthProfile,
+  getCurrentUser,
+  setPassword,
+  changePassword,
 } from '../services/api';
 import Badge from '../components/Badge';
 import { Spinner } from '../components/Loader';
@@ -83,6 +89,16 @@ function HealthProfile() {
   const [errorMessage, setErrorMessage] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
 
+  // Security credentials state
+  const [currentUser, setCurrentUser] = useState(null);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [showPwd, setShowPwd] = useState(false);
+
   const bmiDisplay = useMemo(() => {
     if (profile?.bmi) {
       return Number(profile.bmi).toFixed(2);
@@ -106,9 +122,15 @@ function HealthProfile() {
       setErrorMessage('');
 
       try {
-        const existingProfile = await getHealthProfile();
+        const [existingProfile, userDetails] = await Promise.all([
+          getHealthProfile(),
+          getCurrentUser(),
+        ]);
         if (!isMounted) return;
 
+        if (userDetails) {
+          setCurrentUser(userDetails);
+        }
         if (existingProfile) {
           setProfile(existingProfile);
           setHasExistingProfile(true);
@@ -136,6 +158,44 @@ function HealthProfile() {
       isMounted = false;
     };
   }, []);
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (newPassword.length < 8) {
+      setPasswordError('New password must be at least 8 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setPasswordError('Passwords do not match.');
+      return;
+    }
+
+    setPasswordLoading(true);
+    try {
+      if (currentUser && !currentUser.has_password) {
+        const res = await setPassword({ password: newPassword, confirm_password: confirmPassword });
+        setPasswordSuccess(res.message || 'Password created successfully!');
+        setCurrentUser(prev => ({ ...prev, has_password: true }));
+      } else {
+        const res = await changePassword({
+          current_password: currentPassword,
+          new_password: newPassword,
+          confirm_password: confirmPassword
+        });
+        setPasswordSuccess(res.message || 'Password changed successfully!');
+      }
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (err) {
+      setPasswordError(getApiErrorMessage(err, 'Failed to update password.'));
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
 
   const handleChange = (event) => {
     const { name, value } = event.target;
@@ -451,6 +511,136 @@ function HealthProfile() {
                   </div>
                 </form>
               </motion.div>
+
+              {/* Security Settings Card */}
+              {currentUser && (
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.1 }}
+                  className={styles.card}
+                  style={{ marginTop: '2rem' }}
+                >
+                  <h3 className={styles.cardTitle}>Security & Credentials</h3>
+                  
+                  {passwordError ? <p className="alert alertError"><FiAlertTriangle /> {passwordError}</p> : null}
+                  {passwordSuccess ? <p className="alert alertSuccess"><FiInfo /> {passwordSuccess}</p> : null}
+
+                  {currentUser.is_google_user && !currentUser.has_password ? (
+                    <div style={{
+                      background: 'var(--cp-primary-light)',
+                      border: '1px solid rgba(37,99,235,0.1)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '1rem',
+                      marginBottom: '1.25rem',
+                      fontSize: '0.875rem',
+                      color: 'var(--cp-primary)',
+                      fontWeight: 500
+                    }}>
+                      💡 You currently sign in via Google OAuth. To enable email/password login as well, set a password below to configure your hybrid account.
+                    </div>
+                  ) : null}
+
+                  <form onSubmit={handlePasswordSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+                    {currentUser.has_password && (
+                      <div>
+                        <label htmlFor="currentPassword" className="form-label">
+                          Current Password
+                        </label>
+                        <div className="input-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <FiLock style={{ position: 'absolute', left: '1rem', color: 'var(--cp-subtext)' }} />
+                          <input
+                            id="currentPassword"
+                            name="currentPassword"
+                            required
+                            className="form-input"
+                            type={showPwd ? 'text' : 'password'}
+                            placeholder="Enter your current password"
+                            value={currentPassword}
+                            onChange={(e) => setCurrentPassword(e.target.value)}
+                            disabled={passwordLoading}
+                            style={{ paddingLeft: '2.5rem', width: '100%', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.25rem' }}>
+                      <div>
+                        <label htmlFor="newPassword" className="form-label">
+                          {currentUser.has_password ? 'New Password' : 'Password'}
+                        </label>
+                        <div className="input-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <FiLock style={{ position: 'absolute', left: '1rem', color: 'var(--cp-subtext)' }} />
+                          <input
+                            id="newPassword"
+                            name="newPassword"
+                            required
+                            className="form-input"
+                            type={showPwd ? 'text' : 'password'}
+                            placeholder="Min 8 characters"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            disabled={passwordLoading}
+                            style={{ paddingLeft: '2.5rem', width: '100%', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                      
+                      <div>
+                        <label htmlFor="confirmPassword" className="form-label">
+                          Confirm Password
+                        </label>
+                        <div className="input-wrapper" style={{ position: 'relative', display: 'flex', alignItems: 'center' }}>
+                          <FiLock style={{ position: 'absolute', left: '1rem', color: 'var(--cp-subtext)' }} />
+                          <input
+                            id="confirmPassword"
+                            name="confirmPassword"
+                            required
+                            className="form-input"
+                            type={showPwd ? 'text' : 'password'}
+                            placeholder="Repeat new password"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            disabled={passwordLoading}
+                            style={{ paddingLeft: '2.5rem', width: '100%', boxSizing: 'border-box' }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.25rem' }}>
+                      <button
+                        type="button"
+                        onClick={() => setShowPwd(!showPwd)}
+                        style={{
+                          background: 'none',
+                          border: 'none',
+                          cursor: 'pointer',
+                          color: 'var(--cp-subtext)',
+                          fontSize: '0.8rem',
+                          fontWeight: '600',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.25rem',
+                        }}
+                      >
+                        {showPwd ? <FiEyeOff size={14} /> : <FiEye size={14} />}
+                        <span>{showPwd ? 'Hide Passwords' : 'Show Passwords'}</span>
+                      </button>
+
+                      <button
+                        disabled={passwordLoading}
+                        className="btn btn-primary"
+                        type="submit"
+                        style={{ padding: '0.6rem 1.5rem', fontSize: '0.9rem' }}
+                      >
+                        {passwordLoading ? 'Updating...' : currentUser.has_password ? 'Change Password' : 'Create Password'}
+                      </button>
+                    </div>
+                  </form>
+                </motion.div>
+              )}
             </div>
           </div>
         )}
