@@ -11,12 +11,22 @@ import {
   FiArrowRight,
   FiAlertCircle,
   FiThermometer,
-  FiClock
+  FiClock,
+  FiPhone
 } from 'react-icons/fi';
-import { getApiErrorMessage, getHealthProfile, getAppointments } from '../services/api';
+import { getApiErrorMessage, getHealthProfile, getAppointments, getMedicalHistory } from '../services/api';
 import Badge from '../components/Badge';
 import { Spinner } from '../components/Loader';
 import styles from './Dashboard.module.css';
+
+function formatIndianDate(dateStr) {
+  if (!dateStr) return '';
+  const parts = dateStr.split('-');
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
 
 const LAST_RESULT_KEY = 'careplus_last_symptom_result';
 const riskColorMap = {
@@ -109,6 +119,16 @@ const quickActions = [
     icon: FiPlusCircle,
     color: 'success',
   },
+  {
+    title: 'Emergency Contact',
+    desc: 'Call our 24/7 urgent helpline or request immediate assistance.',
+    path: '#',
+    icon: FiPhone,
+    color: 'danger',
+    onClick: () => {
+      alert('Simulating direct helpline call to Emergency Response: dial 112.');
+    }
+  }
 ];
 
 function formatConditions(value) {
@@ -122,6 +142,7 @@ function Dashboard({ user }) {
   const [profile, setProfile] = useState(null);
   const [lastResult, setLastResult] = useState(null);
   const [appointments, setAppointments] = useState([]);
+  const [medicalHistory, setMedicalHistory] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState('');
 
@@ -228,11 +249,16 @@ function Dashboard({ user }) {
       setErrorMessage('');
 
       try {
-        const [profileResponse, appointmentResponse] = await Promise.all([getHealthProfile(), getAppointments()]);
+        const [profileResponse, appointmentResponse, historyResponse] = await Promise.all([
+          getHealthProfile(),
+          getAppointments(),
+          getMedicalHistory()
+        ]);
         if (!isMounted) return;
 
         setProfile(profileResponse || null);
         setAppointments(appointmentResponse || []);
+        setMedicalHistory(historyResponse || []);
 
         const storedResult = localStorage.getItem(LAST_RESULT_KEY);
         if (storedResult) {
@@ -361,8 +387,30 @@ function Dashboard({ user }) {
                   const getAccentColor = () => {
                     if (action.color === 'accent') return 'var(--cp-accent)';
                     if (action.color === 'success') return 'var(--cp-success)';
+                    if (action.color === 'danger') return 'var(--cp-danger)';
                     return 'var(--cp-primary)';
                   };
+
+                  const isLink = action.path && !action.onClick;
+
+                  const content = (
+                    <>
+                      <div
+                        className={styles.actionIcon}
+                        style={{
+                          background: action.color === 'accent' ? 'var(--cp-accent-light)' : action.color === 'success' ? 'var(--cp-success-light)' : action.color === 'danger' ? 'var(--cp-danger-light)' : 'var(--cp-primary-light)',
+                          color: getAccentColor()
+                        }}
+                      >
+                        <Icon size={20} />
+                      </div>
+                      <div>
+                        <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>{action.title}</h4>
+                        <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: 'var(--cp-subtext)', lineHeight: '1.4' }}>{action.desc}</p>
+                      </div>
+                      <FiArrowRight className={styles.actionArrow} size={16} />
+                    </>
+                  );
 
                   return (
                     <motion.div
@@ -370,22 +418,15 @@ function Dashboard({ user }) {
                       whileHover={{ y: -4, boxShadow: 'var(--shadow-hover)' }}
                       className={styles.actionCard}
                     >
-                      <RouterLink to={action.path} className={styles.actionLink}>
-                        <div
-                          className={styles.actionIcon}
-                          style={{
-                            background: action.color === 'accent' ? 'var(--cp-accent-light)' : action.color === 'success' ? 'var(--cp-success-light)' : 'var(--cp-primary-light)',
-                            color: getAccentColor()
-                          }}
-                        >
-                          <Icon size={20} />
+                      {isLink ? (
+                        <RouterLink to={action.path} className={styles.actionLink}>
+                          {content}
+                        </RouterLink>
+                      ) : (
+                        <div onClick={action.onClick} className={styles.actionLink} style={{ cursor: 'pointer' }}>
+                          {content}
                         </div>
-                        <div>
-                          <h4 style={{ margin: 0, fontSize: '0.95rem', fontWeight: 700 }}>{action.title}</h4>
-                          <p style={{ margin: '0.15rem 0 0 0', fontSize: '0.8rem', color: 'var(--cp-subtext)', lineHeight: '1.4' }}>{action.desc}</p>
-                        </div>
-                        <FiArrowRight className={styles.actionArrow} size={16} />
-                      </RouterLink>
+                      )}
                     </motion.div>
                   );
                 })}
@@ -615,7 +656,7 @@ function Dashboard({ user }) {
                         <div>
                           <strong style={{ color: 'var(--cp-text)' }}>{apt.doctor_name}</strong>
                           <span style={{ color: 'var(--cp-subtext)', display: 'block', fontSize: '0.75rem' }}>
-                            {apt.appointment_date} · {apt.time_slot}
+                            {formatIndianDate(apt.appointment_date)} · {apt.time_slot}
                           </span>
                         </div>
                         <Badge variant={apt.status === 'completed' ? 'teal' : apt.status === 'cancelled' ? 'danger' : 'success'}>
@@ -625,6 +666,91 @@ function Dashboard({ user }) {
                     ))}
                   </div>
                 )}
+              </motion.div>
+
+              {/* Medical History */}
+              <motion.div
+                className={styles.card}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.4 }}
+              >
+                <h3 className={styles.cardTitle}>Medical History</h3>
+                {medicalHistory.length === 0 ? (
+                  <p style={{ fontSize: '0.85rem', color: 'var(--cp-subtext)', textAlign: 'center', padding: '1rem 0' }}>
+                    No recorded medical history events in file.
+                  </p>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                    {medicalHistory.map((item) => (
+                      <div key={item.id} style={{
+                        background: 'var(--cp-bg)',
+                        border: '1px solid var(--cp-border)',
+                        borderRadius: 'var(--radius-md)',
+                        padding: '1rem',
+                        fontSize: '0.85rem',
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center'
+                      }}>
+                        <div>
+                          <strong style={{ fontSize: '0.95rem', color: 'var(--cp-text)', display: 'block' }}>{item.condition_name}</strong>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)' }}>Diagnosed: {formatIndianDate(item.diagnosed_date)}</span>
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <Badge variant={item.severity === 'HIGH' ? 'danger' : item.severity === 'MEDIUM' ? 'warning' : 'primary'}>
+                            {item.severity} Risk
+                          </Badge>
+                          <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--cp-subtext)', marginTop: '0.2rem', textTransform: 'capitalize' }}>
+                            {item.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </motion.div>
+
+              {/* Recent Reports */}
+              <motion.div
+                className={styles.card}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.5 }}
+              >
+                <h3 className={styles.cardTitle}>Clinical Medical Reports</h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                  {[
+                    { name: 'Blood Chemistry Panel.pdf', date: '2026-07-10', type: 'Laboratory Report' },
+                    { name: 'Clinical Triage Assessment.pdf', date: '2026-07-08', type: 'AI Diagnostic Report' },
+                    { name: 'ECG Electrocardiogram Summary.pdf', date: '2026-07-05', type: 'Cardiology Diagnostics' }
+                  ].map((report, idx) => (
+                    <div key={idx} style={{
+                      background: 'var(--cp-white)',
+                      border: '1px solid var(--cp-border)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.85rem 1rem',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      fontSize: '0.85rem'
+                    }}>
+                      <div>
+                        <strong style={{ color: 'var(--cp-text)', display: 'block' }}>{report.name}</strong>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)' }}>{report.type} · Released {report.date}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          alert(`Downloading ${report.name}... (Simulating PDF compilation)`);
+                        }}
+                        className="btn btn-secondary"
+                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.75rem', borderRadius: 'var(--radius-sm)' }}
+                      >
+                        Download PDF
+                      </button>
+                    </div>
+                  ))}
+                </div>
               </motion.div>
             </div>
           </div>

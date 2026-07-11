@@ -519,6 +519,55 @@ function SymptomChecker() {
                 </div>
 
                 <div className={styles.reportContent}>
+                  {/* Triage Metadata Summary */}
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: '1fr 1fr',
+                    gap: '0.75rem',
+                    background: 'var(--cp-bg)',
+                    border: '1px solid var(--cp-border)',
+                    borderRadius: 'var(--radius-md)',
+                    padding: '1rem',
+                    fontSize: '0.85rem'
+                  }}>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--cp-subtext)', fontWeight: 600 }}>Triage Urgency:</span>
+                      <strong style={{ color: riskColor }}>{activeAnalysisResult.risk_level} ({activeAnalysisResult.urgency || 'Monitor'})</strong>
+                    </div>
+                    <div>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--cp-subtext)', fontWeight: 600 }}>Triage Confidence:</span>
+                      <strong>{Math.round(Number(activeAnalysisResult.confidence ?? 0.85) * 100)}%</strong>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--cp-subtext)', fontWeight: 600 }}>Recommended Clinic/Dept:</span>
+                      <strong>{activeAnalysisResult.recommended_department || 'General Medicine'}</strong>
+                    </div>
+                    <div style={{ gridColumn: 'span 2' }}>
+                      <span style={{ display: 'block', fontSize: '0.7rem', color: 'var(--cp-subtext)', fontWeight: 600 }}>Recommended Doctor Type:</span>
+                      <strong>{activeAnalysisResult.recommended_specialist || 'General Physician'}</strong>
+                    </div>
+                  </div>
+
+                  {/* Emergency Warning advice */}
+                  {String(activeAnalysisResult.risk_level).toUpperCase() === 'HIGH' && (
+                    <div style={{
+                      background: 'var(--cp-danger-light)',
+                      border: '1px solid rgba(239, 68, 68, 0.2)',
+                      borderRadius: 'var(--radius-md)',
+                      padding: '0.875rem',
+                      color: 'var(--cp-danger)',
+                      fontSize: '0.8rem',
+                      lineHeight: '1.4',
+                      fontWeight: 600
+                    }}>
+                      <FiAlertTriangle style={{ marginRight: '0.35rem', verticalAlign: 'middle' }} />
+                      <strong>Seek Immediate Medical Care!</strong>
+                      <p style={{ margin: '0.25rem 0 0 0', fontWeight: 500 }}>
+                        These symptoms indicate a potentially high-risk situation. Please contact emergency services or proceed to the nearest Emergency Department.
+                      </p>
+                    </div>
+                  )}
+
                   {/* Extracted Symptoms */}
                   <ListBlock
                     title="Extracted Symptoms"

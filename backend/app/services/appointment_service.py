@@ -62,11 +62,11 @@ class AppointmentService:
     def book(self, db: Session, current_user: User, payload: AppointmentCreate) -> Appointment:
         self._ensure_future_slot(payload.appointment_date, payload.time_slot)
 
-        hospital = hospital_service.get_hospital(payload.hospital_id)
+        hospital = hospital_service.get_hospital(db, payload.hospital_id)
         if not hospital:
             raise AppException(404, "HOSPITAL_NOT_FOUND", "Selected hospital was not found.")
 
-        doctor = hospital_service.get_doctor(payload.hospital_id, payload.doctor_id)
+        doctor = hospital_service.get_doctor(db, payload.hospital_id, payload.doctor_id)
         if not doctor:
             raise AppException(404, "DOCTOR_NOT_FOUND", "Selected doctor was not found for this hospital.")
 
@@ -92,23 +92,32 @@ class AppointmentService:
                 "You already have an appointment booked for this slot."
             )
 
-        # Check slot availability / Fully Booked (capacity = 1)
-        existing_doc_apt = (
-            db.query(Appointment)
-            .filter(
-                Appointment.doctor_id == payload.doctor_id,
-                Appointment.appointment_date == payload.appointment_date,
-                Appointment.time_slot == payload.time_slot,
-                Appointment.status != "cancelled"
-            )
-            .first()
-        )
-        if existing_doc_apt:
+        # Check slot availability in doctor_availabilities
+        from app.models.doctor_availability import DoctorAvailability
+        slot = db.query(DoctorAvailability).filter(
+            DoctorAvailability.doctor_id == payload.doctor_id,
+            DoctorAvailability.available_date == payload.appointment_date,
+            DoctorAvailability.time_slot == payload.time_slot
+        ).first()
+        
+        if slot and slot.is_booked:
             raise AppException(
                 422,
                 "FULLY_BOOKED",
                 "This slot is fully booked for this doctor."
             )
+
+        # Update or create slot availability
+        if slot:
+            slot.is_booked = True
+        else:
+            slot = DoctorAvailability(
+                doctor_id=payload.doctor_id,
+                available_date=payload.appointment_date,
+                time_slot=payload.time_slot,
+                is_booked=True
+            )
+            db.add(slot)
 
         appointment = Appointment(
             user_id=current_user.id,
@@ -144,6 +153,17 @@ class AppointmentService:
             
         appointment.status = "cancelled"
         appointment.cancelled_at = datetime.now()
+
+        # Release slot
+        from app.models.doctor_availability import DoctorAvailability
+        slot = db.query(DoctorAvailability).filter(
+            DoctorAvailability.doctor_id == appointment.doctor_id,
+            DoctorAvailability.available_date == appointment.appointment_date,
+            DoctorAvailability.time_slot == appointment.time_slot
+        ).first()
+        if slot:
+            slot.is_booked = False
+
         db.commit()
         db.refresh(appointment)
         return appointment
@@ -189,24 +209,40 @@ class AppointmentService:
                 "You already have an appointment booked for this slot."
             )
 
-        # Check slot availability
-        existing_doc_apt = (
-            db.query(Appointment)
-            .filter(
-                Appointment.doctor_id == appointment.doctor_id,
-                Appointment.appointment_date == payload.appointment_date,
-                Appointment.time_slot == payload.time_slot,
-                Appointment.status != "cancelled",
-                Appointment.id != appointment_id
-            )
-            .first()
-        )
-        if existing_doc_apt:
+        # Release old slot
+        from app.models.doctor_availability import DoctorAvailability
+        old_slot = db.query(DoctorAvailability).filter(
+            DoctorAvailability.doctor_id == appointment.doctor_id,
+            DoctorAvailability.available_date == appointment.appointment_date,
+            DoctorAvailability.time_slot == appointment.time_slot
+        ).first()
+        if old_slot:
+            old_slot.is_booked = False
+
+        # Check and book new slot
+        new_slot = db.query(DoctorAvailability).filter(
+            DoctorAvailability.doctor_id == appointment.doctor_id,
+            DoctorAvailability.available_date == payload.appointment_date,
+            DoctorAvailability.time_slot == payload.time_slot
+        ).first()
+        
+        if new_slot and new_slot.is_booked:
             raise AppException(
                 422,
                 "FULLY_BOOKED",
                 "This slot is fully booked for this doctor."
             )
+        
+        if new_slot:
+            new_slot.is_booked = True
+        else:
+            new_slot = DoctorAvailability(
+                doctor_id=appointment.doctor_id,
+                available_date=payload.appointment_date,
+                time_slot=payload.time_slot,
+                is_booked=True
+            )
+            db.add(new_slot)
 
         appointment.appointment_date = payload.appointment_date
         appointment.time_slot = payload.time_slot.strip()

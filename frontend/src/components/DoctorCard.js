@@ -1,12 +1,15 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { FiUser, FiActivity, FiAward, FiStar, FiHeart } from 'react-icons/fi';
+import { FiUser, FiActivity, FiAward, FiStar, FiHeart, FiGlobe, FiDollarSign } from 'react-icons/fi';
 import Badge from './Badge';
 
-function DoctorCard({ doctor, onBook, hospitalName, consultationFee }) {
-  // Generate random rating for doctor styling
-  const rating = (4.5 + (doctor.experience_years % 5) * 0.1).toFixed(1);
-  
+function DoctorCard({ doctor, onBook }) {
+  // Generate random rating for doctor styling if not present
+  const rating = doctor.rating || (4.5 + (doctor.experience_years % 5) * 0.1).toFixed(1);
+  const qualification = doctor.qualification || "MBBS MD";
+  const languages = doctor.languages || "English, Hindi";
+  const consultationFee = doctor.consultation_fee || 1000;
+
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
@@ -21,44 +24,51 @@ function DoctorCard({ doctor, onBook, hospitalName, consultationFee }) {
         display: 'flex',
         gap: '1rem',
         position: 'relative',
+        boxShadow: 'var(--shadow-sm)',
+        width: '100%',
+        boxSizing: 'border-box'
       }}
     >
-      {/* Avatar/Icon Panel */}
+      {/* Photo Placeholder Panel */}
       <div
         style={{
-          width: '70px',
-          height: '70px',
+          width: '80px',
+          height: '80px',
           borderRadius: 'var(--radius-md)',
           backgroundColor: 'var(--cp-primary-light)',
           color: 'var(--cp-primary)',
           display: 'flex',
+          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
           flexShrink: 0,
+          border: '1px solid rgba(37, 99, 235, 0.15)',
         }}
       >
-        <FiUser size={36} />
+        <FiUser size={38} />
+        <span style={{ fontSize: '0.6rem', fontWeight: 'bold', marginTop: '0.2rem', textTransform: 'uppercase', opacity: 0.7 }}>MD Photo</span>
       </div>
 
       {/* Info panel */}
-      <div style={{ flex: 1 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
           <div>
             <h4
               style={{
                 fontFamily: 'var(--font-display)',
                 fontSize: '1.05rem',
-                fontWeight: '700',
-                margin: '0 0 0.25rem 0',
+                fontWeight: '800',
+                margin: '0 0 0.15rem 0',
+                color: 'var(--cp-text)'
               }}
             >
               {doctor.name}
             </h4>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
               <Badge variant="teal" style={{ fontSize: '0.65rem', padding: '0.15rem 0.4rem' }}>
                 {doctor.specialty}
               </Badge>
-              <span style={{ fontSize: '0.8rem', color: 'var(--cp-subtext)' }}>· {doctor.department}</span>
+              <span style={{ fontSize: '0.75rem', color: 'var(--cp-subtext)', fontWeight: 600 }}>{qualification}</span>
             </div>
           </div>
           <button
@@ -78,31 +88,42 @@ function DoctorCard({ doctor, onBook, hospitalName, consultationFee }) {
           </button>
         </div>
 
-        {hospitalName && (
-          <p style={{ margin: '0 0 0.5rem 0', fontSize: '0.85rem', color: 'var(--cp-subtext)' }}>
-            Hospital: <strong>{hospitalName}</strong>
-          </p>
-        )}
-
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', fontSize: '0.8rem', color: 'var(--cp-subtext)', marginBottom: '0.75rem' }}>
+        {/* Doctor clinical details grid */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '0.4rem',
+          fontSize: '0.775rem',
+          color: 'var(--cp-subtext)',
+          margin: '0.2rem 0'
+        }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <FiAward style={{ color: 'var(--cp-accent)' }} />
             <span>{doctor.experience_years} Years Experience</span>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <FiStar fill="#F59E0B" color="#F59E0B" size={14} />
+            <FiStar fill="#F59E0B" color="#F59E0B" size={13} />
             <span>{rating} Rating</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', gridColumn: 'span 2' }}>
+            <FiGlobe style={{ color: 'var(--cp-success)' }} />
+            <span>Languages: {languages}</span>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', gridColumn: 'span 2' }}>
+            <FiDollarSign style={{ color: 'var(--cp-primary)' }} />
+            <span>Consultation Fee: <strong style={{ color: 'var(--cp-text)' }}>₹{consultationFee}</strong></span>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--cp-border)', paddingTop: '0.75rem', marginTop: '0.25rem' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', borderTop: '1px solid var(--cp-border)', paddingTop: '0.6rem', marginTop: '0.2rem' }}>
           {onBook && (
             <button
+              type="button"
               className="btn btn-primary"
               onClick={onBook}
               style={{ padding: '0.45rem 1rem', fontSize: '0.8rem', borderRadius: 'var(--radius-sm)' }}
             >
-              Book Now
+              Select Doctor
             </button>
           )}
         </div>

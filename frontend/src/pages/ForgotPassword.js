@@ -13,13 +13,10 @@ function ForgotPassword() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [resetDetails, setResetDetails] = useState(null); // For local testing display
-
   const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setSuccess('');
-    setResetDetails(null);
 
     const trimmedEmail = email.trim();
     if (!emailRegex.test(trimmedEmail)) {
@@ -31,15 +28,7 @@ function ForgotPassword() {
 
     try {
       const data = await forgotPassword(trimmedEmail);
-      setSuccess(data?.message || 'A password recovery link has been generated.');
-      
-      // If server returns the reset details (dev environment helper)
-      if (data?.reset_token) {
-        setResetDetails({
-          token: data.reset_token,
-          url: data.reset_url
-        });
-      }
+      setSuccess(data?.message || 'If an account exists for this email, a password reset link has been sent.');
     } catch (apiError) {
       setError(getApiErrorMessage(apiError, 'Unable to generate password recovery link.'));
     } finally {
@@ -129,32 +118,7 @@ function ForgotPassword() {
             </button>
           </form>
 
-          {/* Dev Helper Block */}
-          {resetDetails && (
-            <div style={{
-              marginTop: '1.5rem',
-              padding: '1rem',
-              background: 'var(--cp-bg)',
-              border: '1px dashed var(--cp-primary)',
-              borderRadius: 'var(--radius-md)',
-              fontSize: '0.8rem',
-              wordBreak: 'break-all'
-            }}>
-              <strong style={{ color: 'var(--cp-primary)', display: 'block', marginBottom: '0.4rem' }}>
-                Development Mode Helper:
-              </strong>
-              <p style={{ margin: '0 0 0.5rem 0', color: 'var(--cp-text)' }}>
-                Click below to simulate email redirection:
-              </p>
-              <Link to={`/reset-password?token=${resetDetails.token}`} style={{
-                color: 'var(--cp-primary)',
-                fontWeight: '700',
-                textDecoration: 'underline'
-              }}>
-                Go to Reset Password screen
-              </Link>
-            </div>
-          )}
+
         </motion.div>
       </div>
     </section>

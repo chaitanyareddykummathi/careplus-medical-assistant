@@ -71,8 +71,29 @@ function ResetPassword() {
       return;
     }
 
+    const hasUppercase = /[A-Z]/.test(form.password);
+    const hasLowercase = /[a-z]/.test(form.password);
+    const hasNumber = /[0-9]/.test(form.password);
+    const hasSpecialChar = /[^A-Za-z0-9]/.test(form.password);
+
     if (form.password.length < 8) {
       setError('Password must be at least 8 characters long.');
+      return;
+    }
+    if (!hasUppercase) {
+      setError('Password must contain at least one uppercase letter.');
+      return;
+    }
+    if (!hasLowercase) {
+      setError('Password must contain at least one lowercase letter.');
+      return;
+    }
+    if (!hasNumber) {
+      setError('Password must contain at least one number.');
+      return;
+    }
+    if (!hasSpecialChar) {
+      setError('Password must contain at least one special character.');
       return;
     }
 

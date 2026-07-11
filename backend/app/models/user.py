@@ -59,3 +59,9 @@ class User(TimestampMixin, Base):
         cascade='all, delete-orphan',
         lazy='selectin',
     )
+    medical_histories = relationship(
+        'MedicalHistory',
+        back_populates='user',
+        cascade='all, delete-orphan',
+        lazy='selectin',
+    )

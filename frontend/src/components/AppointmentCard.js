@@ -1,10 +1,21 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { FiCalendar, FiClock, FiMapPin, FiUser, FiActivity } from 'react-icons/fi';
 import Badge from './Badge';
 
 function AppointmentCard({ appointment, onCancel, onReschedule }) {
   const isUpcoming = appointment.status === 'upcoming' || appointment.status === 'rescheduled';
+
+  // Format date visually for Indian standards (DD/MM/YYYY)
+  const formattedDate = useMemo(() => {
+    const dStr = appointment.appointment_date;
+    if (!dStr) return '';
+    const parts = dStr.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    }
+    return dStr;
+  }, [appointment.appointment_date]);
 
   return (
     <motion.article
@@ -22,6 +33,7 @@ function AppointmentCard({ appointment, onCancel, onReschedule }) {
         flexDirection: 'column',
         gap: '0.875rem',
         transition: 'all 0.3s ease',
+        position: 'relative'
       }}
     >
       {/* Header info */}
@@ -37,7 +49,7 @@ function AppointmentCard({ appointment, onCancel, onReschedule }) {
 
         <div style={{ display: 'flex', gap: '0.5rem', fontSize: '0.8rem', color: 'var(--cp-subtext)' }}>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-            <FiCalendar /> {appointment.appointment_date}
+            <FiCalendar /> {formattedDate}
           </span>
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
             <FiClock /> {appointment.time_slot}
@@ -56,30 +68,71 @@ function AppointmentCard({ appointment, onCancel, onReschedule }) {
             color: 'var(--cp-text)',
           }}
         >
-          {appointment.hospital_name}
+          {appointment.doctor_name}
         </h3>
+        <span
+          style={{
+            display: 'block',
+            fontSize: '0.8rem',
+            color: 'var(--cp-subtext)',
+            fontWeight: 500,
+            marginBottom: '0.2rem',
+          }}
+        >
+          {appointment.specialty} · {appointment.department}
+        </span>
+        <span
+          style={{
+            display: 'block',
+            fontSize: '0.8rem',
+            color: 'var(--cp-subtext)',
+            fontWeight: 500,
+          }}
+        >
+          Patient: <strong>{appointment.patient_name}</strong>
+        </span>
+      </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', fontSize: '0.85rem', color: 'var(--cp-subtext)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-            <FiUser style={{ color: 'var(--cp-primary)' }} />
-            <span>Doctor: <strong>{appointment.doctor_name}</strong> ({appointment.department})</span>
-          </div>
-          {appointment.patient_name && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-              <FiActivity style={{ color: 'var(--cp-accent)' }} />
-              <span>Patient: {appointment.patient_name}</span>
-            </div>
-          )}
-          {appointment.reason && (
-            <div style={{ marginTop: '0.25rem', padding: '0.5rem 0.75rem', borderRadius: 'var(--radius-sm)', background: 'var(--cp-bg)', fontSize: '0.8rem' }}>
-              Reason: {appointment.reason}
-            </div>
-          )}
+      {/* Location Row */}
+      <div
+        style={{
+          borderTop: '1px solid var(--cp-border)',
+          borderBottom: '1px solid var(--cp-border)',
+          padding: '0.65rem 0',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.35rem',
+          fontSize: '0.8rem',
+          color: 'var(--cp-text)',
+        }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+          <FiActivity style={{ color: 'var(--cp-primary)' }} />
+          <span>{appointment.hospital_name}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: 'var(--cp-subtext)' }}>
+          <FiMapPin style={{ color: 'var(--cp-primary)' }} />
+          <span className="text-truncate">{appointment.hospital_address}</span>
         </div>
       </div>
 
-      {/* Action Row */}
-      {isUpcoming && (onCancel || onReschedule) && (
+      {/* Reason row */}
+      {appointment.reason && (
+        <p
+          style={{
+            margin: 0,
+            fontSize: '0.8rem',
+            color: 'var(--cp-subtext)',
+            lineHeight: 1.4,
+            fontStyle: 'italic',
+          }}
+        >
+          Reason: {appointment.reason}
+        </p>
+      )}
+
+      {/* Actions */}
+      {isUpcoming && (onReschedule || onCancel) && (
         <div
           style={{
             display: 'flex',
@@ -107,7 +160,7 @@ function AppointmentCard({ appointment, onCancel, onReschedule }) {
               onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = 'var(--cp-primary-light)')}
               onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'var(--cp-white)')}
             >
-              Reschedule (6 PM)
+              Reschedule Appointment
             </button>
           )}
 

@@ -293,6 +293,17 @@ export async function getHealthProfile() {
   }
 }
 
+export async function getMedicalHistory() {
+  try {
+    const { data } = await http.get(withApiPrefix('/user/medical-history'));
+    return data;
+  } catch (error) {
+    if (error?.response?.status === 404) {
+      return [];
+    }
+    throw error;
+  }
+}
 export async function saveHealthProfile(payload) {
   const { data } = await http.post(withApiPrefix('/user/health-profile'), payload);
   return data;
@@ -321,6 +332,35 @@ export async function getHospitals(filters = {}) {
 export async function getSpecialties() {
   const { data } = await http.get(withApiPrefix('/hospitals/specialties'));
   return data?.data || data;
+}
+
+export async function getLocations() {
+  const { data } = await http.get(withApiPrefix('/locations'));
+  return data?.data || [];
+}
+
+export async function getLocationHospitals(locationId) {
+  const { data } = await http.get(withApiPrefix(`/locations/${locationId}/hospitals`));
+  return data?.data || [];
+}
+
+export async function getHospitalDepartments(hospitalId) {
+  const { data } = await http.get(withApiPrefix(`/hospitals/${hospitalId}/departments`));
+  return data?.data || [];
+}
+
+export async function getHospitalDoctors(hospitalId, departmentName) {
+  const { data } = await http.get(withApiPrefix(`/hospitals/${hospitalId}/doctors`), {
+    params: { department: departmentName }
+  });
+  return data?.data || [];
+}
+
+export async function getDoctorAvailability(doctorId, date) {
+  const { data } = await http.get(withApiPrefix(`/doctors/${doctorId}/availability`), {
+    params: { date }
+  });
+  return data?.data || [];
 }
 
 export async function getAppointments() {

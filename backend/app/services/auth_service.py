@@ -378,63 +378,54 @@ class AuthService:
     def forgot_password(self, db: Session, email: str) -> dict:
         email = email.strip().lower()
         user = db.query(User).filter(func.lower(User.email) == email).first()
+        
+        # Generic production message
+        generic_msg = "If an account exists for this email, a password reset link has been sent."
+        
         if not user:
-            # Return success message to prevent user enumeration
-            return {"success": True, "message": "If the email is registered, a password recovery link has been generated."}
+            logger.info(f"Password reset requested for non-existent email: {email}")
+            return {"success": True, "message": generic_msg}
 
-        # Case 2: Google-only user (has is_google_user=True and hashed_password=None)
+        # Google-only users can't reset password this way, but we return generic message silently to prevent discovery
         if user.is_google_user and not user.hashed_password:
-            raise AppException(
-                status_code=400,
-                error_code="GOOGLE_ACCOUNT_ONLY",
-                message="This account is registered via Google Sign-In. Please sign in with Google. Once signed in, you can set a password in your Profile to enable password login.",
-            )
+            logger.info(f"Password reset requested for Google-only user: {email} (ignored)")
+            return {"success": True, "message": generic_msg}
 
-        # Case 1 & 3: Standard and Hybrid users
-        token = secrets.token_urlsafe(32)
-        user.reset_token = token
-        user.reset_token_expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
-        db.commit()
-
-        # Send password reset email
+        from app.services.password_reset_service import password_reset_service
+        from app.services.notification_service import notification_service
+        
+        token = password_reset_service.generate_token(db, user.id)
+        
         try:
-            from app.services.email_service import email_service
-            email_service.send_password_reset_email(user.email, user.name, token)
+            notification_service.send_password_reset(user.email, user.name, token)
         except Exception as email_err:
             logger.error(f"Failed to trigger password reset email: {email_err}")
 
-        logger.info(f"Password reset token for {email}: {token}")
-        
-        response = {
-            "success": True, 
-            "message": "If the email is registered, a password recovery link has been generated."
-        }
-        # Include token in response for development environments to facilitate grading/testing
-        if settings.environment.lower() in {"development", "dev", "local", "test"}:
-            response["reset_token"] = token
-            response["reset_url"] = f"http://localhost:3000/reset-password?token={token}"
+        # Still print token to backend log for development debugging/testing!
+        logger.info(f"Development Helper - Reset URL for {email}: http://localhost:3000/reset-password?token={token}")
 
-        return response
+        return {"success": True, "message": generic_msg}
 
     def reset_password(self, db: Session, token: str, new_password: str) -> dict:
-        user = db.query(User).filter(User.reset_token == token).first()
-        if not user:
-            raise AppException(400, "INVALID_RESET_TOKEN", "Invalid or expired reset token.")
+        import re
+        # Validate password strength
+        if len(new_password) < 8:
+            raise AppException(400, "WEAK_PASSWORD", "Password must be at least 8 characters long.")
+        if not re.search(r"[A-Z]", new_password):
+            raise AppException(400, "WEAK_PASSWORD", "Password must contain at least one uppercase letter.")
+        if not re.search(r"[a-z]", new_password):
+            raise AppException(400, "WEAK_PASSWORD", "Password must contain at least one lowercase letter.")
+        if not re.search(r"\d", new_password):
+            raise AppException(400, "WEAK_PASSWORD", "Password must contain at least one number.")
+        if not re.search(r"[^A-Za-z0-9]", new_password):
+            raise AppException(400, "WEAK_PASSWORD", "Password must contain at least one special character.")
 
-        expiry = user.reset_token_expires_at
-        if expiry:
-            if expiry.tzinfo is None:
-                expiry = expiry.replace(tzinfo=timezone.utc)
-            if expiry < datetime.now(timezone.utc):
-                raise AppException(400, "EXPIRED_RESET_TOKEN", "Reset token has expired. Please request another link.")
+        from app.services.password_reset_service import password_reset_service
+        user = password_reset_service.validate_and_use_token(db, token)
 
         user.hashed_password = hash_password(new_password)
-        user.reset_token = None
-        user.reset_token_expires_at = None
         user.failed_login_attempts = 0
         user.lockout_until = None
-        # Note: We do NOT set user.is_google_user = False, because if they are a hybrid account
-        # they should still be able to sign in via Google. They now have a password, so password login is also enabled.
         db.commit()
 
         logger.info(f"Password reset successful for user: {user.email}")
